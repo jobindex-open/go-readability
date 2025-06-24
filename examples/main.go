@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	readability "github.com/go-shiori/go-readability"
+	readability "codeberg.org/readeck/go-readability"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/go-shiori/go-readability
+module codeberg.org/readeck/go-readability
 
 go 1.23.0
 

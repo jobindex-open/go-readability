@@ -24,7 +24,7 @@ This package is stable enough for use and up to date with Readability.js [v0.4.4
 To install this package, just run `go get` :
 
 ```
-go get -u -v github.com/go-shiori/go-readability
+go get -u -v codeberg.org/readeck/go-readability
 ```
 
 ## Example
@@ -40,7 +40,7 @@ import (
 	"os"
 	"time"
 
-	readability "github.com/go-shiori/go-readability"
+	readability "codeberg.org/readeck/go-readability"
 )
 
 var (
@@ -93,7 +93,7 @@ import (
 	"net/http"
 	"net/url"
 
-	readability "github.com/go-shiori/go-readability"
+	readability "codeberg.org/readeck/go-readability"
 )
 
 var (
@@ -142,7 +142,7 @@ func main() {
 You can also use `go-readability` as command line app. To do that, first install the CLI :
 
 ```
-go install github.com/go-shiori/go-readability/cmd/go-readability@latest
+go install codeberg.org/readeck/go-readability/cmd/go-readability@latest
 ```
 
 Now you can use it by running `go-readability` in your terminal :
@@ -167,7 +167,7 @@ Flags:
 
 Go-Readability is distributed under [MIT license][mit], which means you can use and modify it however you want. However, if you make an enhancement for it, if possible, please send a pull request. If you like this project, please consider donating to me either via [PayPal][paypal] or [Ko-Fi][kofi].
 
-[go-ref]: https://pkg.go.dev/github.com/go-shiori/go-readability
+[go-ref]: https://pkg.go.dev/codeberg.org/readeck/go-readability
 [go-ref-badge]: https://img.shields.io/static/v1?label=&message=Reference&color=007d9c&logo=go&logoColor=white
 [paypal]: https://www.paypal.me/RadhiFadlillah
 [paypal-badge]: https://img.shields.io/static/v1?label=&message=PayPal&color=00457C&logo=paypal&logoColor=white
