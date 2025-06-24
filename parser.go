@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"codeberg.org/readeck/go-readability/internal/re2go"
 	"github.com/go-shiori/dom"
-	"github.com/go-shiori/go-readability/internal/re2go"
 	"golang.org/x/net/html"
 )
 
