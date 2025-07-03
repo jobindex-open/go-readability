@@ -2,18 +2,20 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	nurl "net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	readability "codeberg.org/readeck/go-readability"
 	"github.com/go-shiori/dom"
-	"github.com/spf13/cobra"
+	flag "github.com/spf13/pflag"
 )
 
 // The User-Agent string used when fetching remote URLs.
@@ -38,49 +40,66 @@ const index = `<!DOCTYPE HTML>
  </body>
 </html>`
 
+var (
+	httpListen   string
+	metadataOnly bool
+	textOnly     bool
+	verbose      bool
+)
+
+func printUsage(w io.Writer, flags *flag.FlagSet) {
+	fmt.Fprintln(w, "Usage:\n  go-readability [flags...] {<url> | <file>}\n\nFlags:")
+	fmt.Fprintln(w, flags.FlagUsages())
+}
+
 func main() {
-	rootCmd := &cobra.Command{
-		Use:   "go-readability [flags] [source]",
-		Run:   rootCmdHandler,
-		Short: "go-readability is parser to fetch readable content of a web page",
-		Long: "go-readability is parser to fetch the readable content of a web page.\n" +
-			"The source can be an url or an existing file in your storage.",
+	flags := flag.NewFlagSet(filepath.Base(os.Args[0]), flag.ContinueOnError)
+	// Override pflag's builtin Usage implementation which unconditionally prints to stderr.
+	flags.Usage = func() {}
+
+	flags.StringVarP(&httpListen, "http", "l", "", "start the http server at the specified address")
+	flags.BoolVarP(&metadataOnly, "metadata", "m", false, "only print the page's metadata")
+	flags.BoolVarP(&textOnly, "text", "t", false, "only print the page's text")
+	flags.BoolVarP(&verbose, "verbose", "v", false, "enable verbose logging")
+
+	if err := flags.Parse(os.Args[1:]); err != nil || flag.NArg() < 1 {
+		if errors.Is(err, flag.ErrHelp) {
+			// When explicitly asked for command help, print usage string to stdout.
+			fmt.Fprintln(os.Stdout,
+				"go-readability is a parser that extracts article contents from a web page.\n"+
+					"The source can be a URL or a filesystem path to a HTML file.")
+			fmt.Fprintln(os.Stdout)
+			printUsage(os.Stdout, flags)
+			return
+		} else if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		printUsage(os.Stderr, flags)
+		os.Exit(2)
 	}
 
-	rootCmd.Flags().StringP("http", "l", "", "start the http server at the specified address")
-	rootCmd.Flags().BoolP("metadata", "m", false, "only print the page's metadata")
-	rootCmd.Flags().BoolP("text", "t", false, "only print the page's text")
-	rootCmd.Flags().BoolP("verbose", "v", false, "enable verbose logging")
-
-	err := rootCmd.Execute()
+	err := rootCmdHandler(flag.Arg(0))
 	if err != nil {
-		log.Fatalln(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }
 
-func rootCmdHandler(cmd *cobra.Command, args []string) {
-	// Start HTTP server
-	httpListen, _ := cmd.Flags().GetString("http")
+func rootCmdHandler(source string) error {
 	if httpListen != "" {
+		// Start HTTP server
 		http.HandleFunc("/", httpHandler)
 		log.Println("Starting HTTP server at", httpListen)
-		log.Fatal(http.ListenAndServe(httpListen, nil))
+		return http.ListenAndServe(httpListen, nil)
 	}
 
-	// Get cmd parameter
-	metadataOnly, _ := cmd.Flags().GetBool("metadata")
-	textOnly, _ := cmd.Flags().GetBool("text")
-	verbose, _ := cmd.Flags().GetBool("verbose")
-	if len(args) > 0 {
-		content, err := getContent(args[0], metadataOnly, textOnly, verbose)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		fmt.Println(content)
-	} else {
-		_ = cmd.Help()
+	content, err := getContent(source, metadataOnly, textOnly, verbose)
+	if err != nil {
+		return err
 	}
+
+	_, err = fmt.Println(content)
+	return err
 }
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
