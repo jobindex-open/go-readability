@@ -55,8 +55,14 @@ func printUsage(w io.Writer, flags *flag.FlagSet) {
 	fmt.Fprintln(w, flags.FlagUsages())
 }
 
-func main() {
-	flags := flag.NewFlagSet(filepath.Base(os.Args[0]), flag.ContinueOnError)
+type statusErr int
+
+func (s statusErr) Error() string {
+	return fmt.Sprintf("exit status %d", s)
+}
+
+func mainRun(args []string) error {
+	flags := flag.NewFlagSet(filepath.Base(args[0]), flag.ContinueOnError)
 	// Override pflag's builtin Usage implementation which unconditionally prints to stderr.
 	flags.Usage = func() {}
 
@@ -66,7 +72,7 @@ func main() {
 	flags.BoolVarP(&verbose, "verbose", "v", false, "enable verbose logging")
 	flags.BoolVarP(&force, "force", "f", false, "continue parsing documents that failed the readerable check")
 
-	if err := flags.Parse(os.Args[1:]); err != nil || flags.NArg() > 1 {
+	if err := flags.Parse(args[1:]); err != nil || flags.NArg() > 1 {
 		if errors.Is(err, flag.ErrHelp) {
 			// When explicitly asked for command help, print usage string to stdout.
 			fmt.Fprintln(os.Stdout,
@@ -75,12 +81,12 @@ func main() {
 					"Pass \"-\" or no argument to read the HTML document from standard input.")
 			fmt.Fprintln(os.Stdout)
 			printUsage(os.Stdout, flags)
-			return
+			return nil
 		} else if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
 		printUsage(os.Stderr, flags)
-		os.Exit(2)
+		return statusErr(2)
 	}
 
 	srcPath := stdinPath
@@ -91,7 +97,21 @@ func main() {
 	err := rootCmdHandler(srcPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return statusErr(1)
+	}
+	return nil
+}
+
+func main() {
+	err := mainRun(os.Args)
+	if err != nil {
+		exitStatus := 1
+		if s, ok := err.(statusErr); ok {
+			exitStatus = int(s)
+		} else {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		os.Exit(exitStatus)
 	}
 }
 
@@ -103,7 +123,7 @@ func rootCmdHandler(srcPath string) error {
 		return http.ListenAndServe(httpListen, nil)
 	}
 
-	content, err := getContent(srcPath, metadataOnly, textOnly, verbose)
+	content, err := getContent(srcPath, metadataOnly, textOnly)
 	if err != nil {
 		return err
 	}
@@ -124,7 +144,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		log.Println("process URL", url)
-		content, err := getContent(url, metadataOnly, textOnly, false)
+		content, err := getContent(url, metadataOnly, textOnly)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -143,7 +163,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getContent(srcPath string, metadataOnly, textOnly, verbose bool) (string, error) {
+func getContent(srcPath string, metadataOnly, textOnly bool) (string, error) {
 	// Open or fetch web page that will be parsed
 	var (
 		pageURL   *nurl.URL
