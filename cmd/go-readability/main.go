@@ -47,6 +47,7 @@ var (
 	metadataOnly bool
 	textOnly     bool
 	verbose      bool
+	force        bool
 )
 
 func printUsage(w io.Writer, flags *flag.FlagSet) {
@@ -63,6 +64,7 @@ func main() {
 	flags.BoolVarP(&metadataOnly, "metadata", "m", false, "only print the page's metadata")
 	flags.BoolVarP(&textOnly, "text", "t", false, "only print the page's text")
 	flags.BoolVarP(&verbose, "verbose", "v", false, "enable verbose logging")
+	flags.BoolVarP(&force, "force", "f", false, "continue parsing documents that failed the readerable check")
 
 	if err := flags.Parse(os.Args[1:]); err != nil || flags.NArg() > 1 {
 		if errors.Is(err, flag.ErrHelp) {
@@ -182,9 +184,13 @@ func getContent(srcPath string, metadataOnly, textOnly, verbose bool) (string, e
 		return "", fmt.Errorf("HTML parse error: %w", err)
 	}
 
-	// Make sure the page is readable
+	// Make sure the page is "readerable"
 	if !readability.CheckDocument(doc) {
-		return "", fmt.Errorf("failed to parse page: the page is not readable")
+		if force {
+			fmt.Fprintf(os.Stderr, "warning: the page might not have article contents\n")
+		} else {
+			return "", errors.New("failed to detect readable content on the page")
+		}
 	}
 
 	parser := readability.NewParser()
