@@ -16,6 +16,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// The User-Agent string used when fetching remote URLs.
+const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+
 const index = `<!DOCTYPE HTML>
 <html>
  <head>
@@ -119,7 +122,12 @@ func getContent(srcPath string, metadataOnly, textOnly, verbose bool) (string, e
 	)
 
 	if _, isURL := validateURL(srcPath); isURL {
-		resp, err := http.Get(srcPath)
+		req, err := http.NewRequest("GET", srcPath, nil)
+		if err != nil {
+			return "", fmt.Errorf("failed to construct the request: %v", err)
+		}
+		req.Header.Add("User-Agent", userAgent)
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return "", fmt.Errorf("failed to fetch web page: %v", err)
 		}
