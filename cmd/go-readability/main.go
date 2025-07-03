@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +12,7 @@ import (
 	"strings"
 
 	readability "codeberg.org/readeck/go-readability"
+	"github.com/go-shiori/dom"
 	"github.com/spf13/cobra"
 )
 
@@ -138,12 +138,13 @@ func getContent(srcPath string, metadataOnly, textOnly, verbose bool) (string, e
 		srcReader = srcFile
 	}
 
-	// Use tee so the reader can be used twice
-	buf := bytes.NewBuffer(nil)
-	tee := io.TeeReader(srcReader, buf)
+	doc, err := dom.Parse(srcReader)
+	if err != nil {
+		return "", fmt.Errorf("HTML parse error: %w", err)
+	}
 
 	// Make sure the page is readable
-	if !readability.Check(tee) {
+	if !readability.CheckDocument(doc) {
 		return "", fmt.Errorf("failed to parse page: the page is not readable")
 	}
 
@@ -151,7 +152,7 @@ func getContent(srcPath string, metadataOnly, textOnly, verbose bool) (string, e
 	parser.Debug = verbose
 
 	// Get readable content from the reader
-	article, err := parser.Parse(buf, pageURL)
+	article, err := parser.ParseAndMutate(doc, pageURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse page: %v", err)
 	}
