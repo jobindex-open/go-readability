@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	nurl "net/url"
 	"os"
@@ -66,7 +67,7 @@ func mainRun(args []string) error {
 	// Override pflag's builtin Usage implementation which unconditionally prints to stderr.
 	flags.Usage = func() {}
 
-	flags.StringVarP(&httpListen, "http", "l", "", "start the http server at the specified address")
+	flags.StringVarP(&httpListen, "http", "l", "", "start the http server at the specified address (example: \":3000\")")
 	flags.BoolVarP(&metadataOnly, "metadata", "m", false, "only print the page's metadata")
 	flags.BoolVarP(&textOnly, "text", "t", false, "only print the page's text")
 	flags.BoolVarP(&verbose, "verbose", "v", false, "enable verbose logging")
@@ -78,7 +79,8 @@ func mainRun(args []string) error {
 			fmt.Fprintln(os.Stdout,
 				"go-readability is a parser that extracts article contents from a web page.\n"+
 					"The source can be a URL or a filesystem path to a HTML file.\n"+
-					"Pass \"-\" or no argument to read the HTML document from standard input.")
+					"Pass \"-\" or no argument to read the HTML document from standard input.\n"+
+					"Use \"--http :0\" to automatically choose an available port for the HTTP server.")
 			fmt.Fprintln(os.Stdout)
 			printUsage(os.Stdout, flags)
 			return nil
@@ -117,10 +119,19 @@ func main() {
 
 func rootCmdHandler(srcPath string) error {
 	if httpListen != "" {
-		// Start HTTP server
+		nl, err := net.Listen("tcp", httpListen)
+		if err != nil {
+			return err
+		}
+		localhost := "localhost"
+		addr := nl.Addr().(*net.TCPAddr)
+		if addr.IP.String() != "::" {
+			localhost = addr.IP.String()
+		}
+		fmt.Fprintf(os.Stderr, "Starting HTTP server at http://%s:%d\n", localhost, addr.Port)
 		http.HandleFunc("/", httpHandler)
-		log.Println("Starting HTTP server at", httpListen)
-		return http.ListenAndServe(httpListen, nil)
+		server := http.Server{Handler: http.DefaultServeMux}
+		return server.Serve(nl)
 	}
 
 	content, err := getContent(srcPath, metadataOnly, textOnly)
