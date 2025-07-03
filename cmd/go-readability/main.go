@@ -40,6 +40,8 @@ const index = `<!DOCTYPE HTML>
  </body>
 </html>`
 
+const stdinPath = "-"
+
 var (
 	httpListen   string
 	metadataOnly bool
@@ -48,7 +50,7 @@ var (
 )
 
 func printUsage(w io.Writer, flags *flag.FlagSet) {
-	fmt.Fprintln(w, "Usage:\n  go-readability [flags...] {<url> | <file>}\n\nFlags:")
+	fmt.Fprintln(w, "Usage:\n  go-readability [<flags>...] [<url> | <file> | -]\n\nFlags:")
 	fmt.Fprintln(w, flags.FlagUsages())
 }
 
@@ -62,12 +64,13 @@ func main() {
 	flags.BoolVarP(&textOnly, "text", "t", false, "only print the page's text")
 	flags.BoolVarP(&verbose, "verbose", "v", false, "enable verbose logging")
 
-	if err := flags.Parse(os.Args[1:]); err != nil || flag.NArg() < 1 {
+	if err := flags.Parse(os.Args[1:]); err != nil || flags.NArg() > 1 {
 		if errors.Is(err, flag.ErrHelp) {
 			// When explicitly asked for command help, print usage string to stdout.
 			fmt.Fprintln(os.Stdout,
 				"go-readability is a parser that extracts article contents from a web page.\n"+
-					"The source can be a URL or a filesystem path to a HTML file.")
+					"The source can be a URL or a filesystem path to a HTML file.\n"+
+					"Pass \"-\" or no argument to read the HTML document from standard input.")
 			fmt.Fprintln(os.Stdout)
 			printUsage(os.Stdout, flags)
 			return
@@ -78,14 +81,19 @@ func main() {
 		os.Exit(2)
 	}
 
-	err := rootCmdHandler(flag.Arg(0))
+	srcPath := stdinPath
+	if flags.NArg() > 0 {
+		srcPath = flags.Arg(0)
+	}
+
+	err := rootCmdHandler(srcPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func rootCmdHandler(source string) error {
+func rootCmdHandler(srcPath string) error {
 	if httpListen != "" {
 		// Start HTTP server
 		http.HandleFunc("/", httpHandler)
@@ -93,7 +101,7 @@ func rootCmdHandler(source string) error {
 		return http.ListenAndServe(httpListen, nil)
 	}
 
-	content, err := getContent(source, metadataOnly, textOnly, verbose)
+	content, err := getContent(srcPath, metadataOnly, textOnly, verbose)
 	if err != nil {
 		return err
 	}
@@ -155,14 +163,18 @@ func getContent(srcPath string, metadataOnly, textOnly, verbose bool) (string, e
 		pageURL = resp.Request.URL
 		srcReader = resp.Body
 	} else {
-		srcFile, err := os.Open(srcPath)
-		if err != nil {
-			return "", fmt.Errorf("failed to open source file: %v", err)
+		if srcPath == stdinPath {
+			defer os.Stdin.Close()
+			srcReader = os.Stdin
+		} else {
+			srcFile, err := os.Open(srcPath)
+			if err != nil {
+				return "", fmt.Errorf("failed to open source file: %v", err)
+			}
+			defer srcFile.Close()
+			srcReader = srcFile
 		}
-		defer srcFile.Close()
-
 		pageURL, _ = nurl.ParseRequestURI("http://fakehost.com")
-		srcReader = srcFile
 	}
 
 	doc, err := dom.Parse(srcReader)
