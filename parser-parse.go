@@ -3,6 +3,8 @@ package readability
 import (
 	"fmt"
 	"io"
+	"log"
+	"log/slog"
 	nurl "net/url"
 	"strings"
 	"time"
@@ -31,7 +33,11 @@ func (ps *Parser) ParseDocument(doc *html.Node, pageURL *nurl.URL) (Article, err
 
 // ParseAndMutate is like ParseDocument, but mutates doc during parsing.
 func (ps *Parser) ParseAndMutate(doc *html.Node, pageURL *nurl.URL) (Article, error) {
-	// Clone document to make sure the original kept untouched
+	// Backward compatibility with old logging approach.
+	if ps.Debug {
+		ps.Logger = newLegacyLogger(log.Default().Writer())
+	}
+
 	ps.doc = doc
 
 	// Reset parser data
@@ -41,6 +47,7 @@ func (ps *Parser) ParseAndMutate(doc *html.Node, pageURL *nurl.URL) (Article, er
 	ps.articleSiteName = ""
 	ps.documentURI = pageURL
 	ps.attempts = []parseAttempt{}
+	// These flags could get modified during subsequent passes in grabArticle
 	ps.flags = flags{
 		stripUnlikelys:     true,
 		useWeightClasses:   true,
@@ -140,19 +147,37 @@ func (ps *Parser) ParseAndMutate(doc *html.Node, pageURL *nurl.URL) (Article, er
 // getDate tries to get a date from metadata, and parse it using a list of known formats.
 func (ps *Parser) getDate(metadata map[string]string, fieldName string) *time.Time {
 	dateStr, ok := metadata[fieldName]
-	if ok && len(dateStr) > 0 {
-		return ps.getParsedDate(dateStr)
+	if !ok || len(dateStr) == 0 {
+		return nil
 	}
-	return nil
-}
-
-// getParsedDate tries to parse a date string using a list of known formats.
-// If the date string can't be parsed, it will return nil.
-func (ps *Parser) getParsedDate(dateStr string) *time.Time {
 	d, err := dateparse.ParseAny(dateStr)
 	if err != nil {
-		ps.logf("failed to parse date \"%s\": %v\n", dateStr, err)
+		ps.Logger.Warn("failed to parse timestamp",
+			slog.Group("metadata",
+				slog.String("field", fieldName),
+				slog.String("value", dateStr),
+			),
+			slog.Any("err", err),
+		)
 		return nil
 	}
 	return &d
+}
+
+func newLegacyLogger(w io.Writer) *slog.Logger {
+	return slog.New(slog.NewTextHandler(
+		w,
+		&slog.HandlerOptions{
+			Level: slog.LevelDebug,
+			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+				if a.Key == "time" {
+					return slog.Attr{}
+				}
+				if a.Value.Kind() == slog.KindFloat64 {
+					return slog.String(a.Key, fmt.Sprintf("%.2f", a.Value.Float64()))
+				}
+				return a
+			},
+		},
+	))
 }
