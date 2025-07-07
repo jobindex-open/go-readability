@@ -1,20 +1,26 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	nurl "net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	readability "codeberg.org/readeck/go-readability"
-	"github.com/spf13/cobra"
+	"github.com/go-shiori/dom"
+	flag "github.com/spf13/pflag"
 )
+
+// The User-Agent string used when fetching remote URLs.
+const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 
 const index = `<!DOCTYPE HTML>
 <html>
@@ -35,49 +41,106 @@ const index = `<!DOCTYPE HTML>
  </body>
 </html>`
 
-func main() {
-	rootCmd := &cobra.Command{
-		Use:   "go-readability [flags] [source]",
-		Run:   rootCmdHandler,
-		Short: "go-readability is parser to fetch readable content of a web page",
-		Long: "go-readability is parser to fetch the readable content of a web page.\n" +
-			"The source can be an url or an existing file in your storage.",
+const stdinPath = "-"
+
+var (
+	httpListen   string
+	metadataOnly bool
+	textOnly     bool
+	verbose      bool
+	force        bool
+)
+
+func printUsage(w io.Writer, flags *flag.FlagSet) {
+	fmt.Fprintln(w, "Usage:\n  go-readability [<flags>...] [<url> | <file> | -]\n\nFlags:")
+	fmt.Fprintln(w, flags.FlagUsages())
+}
+
+type statusErr int
+
+func (s statusErr) Error() string {
+	return fmt.Sprintf("exit status %d", s)
+}
+
+func mainRun(args []string) error {
+	flags := flag.NewFlagSet(filepath.Base(args[0]), flag.ContinueOnError)
+	// Override pflag's builtin Usage implementation which unconditionally prints to stderr.
+	flags.Usage = func() {}
+
+	flags.StringVarP(&httpListen, "http", "l", "", "start the http server at the specified address (example: \":3000\")")
+	flags.BoolVarP(&metadataOnly, "metadata", "m", false, "only print the page's metadata")
+	flags.BoolVarP(&textOnly, "text", "t", false, "only print the page's text")
+	flags.BoolVarP(&verbose, "verbose", "v", false, "enable verbose logging")
+	flags.BoolVarP(&force, "force", "f", false, "continue parsing documents that failed the readerable check")
+
+	if err := flags.Parse(args[1:]); err != nil || flags.NArg() > 1 {
+		if errors.Is(err, flag.ErrHelp) {
+			// When explicitly asked for command help, print usage string to stdout.
+			fmt.Fprintln(os.Stdout,
+				"go-readability is a parser that extracts article contents from a web page.\n"+
+					"The source can be a URL or a filesystem path to a HTML file.\n"+
+					"Pass \"-\" or no argument to read the HTML document from standard input.\n"+
+					"Use \"--http :0\" to automatically choose an available port for the HTTP server.")
+			fmt.Fprintln(os.Stdout)
+			printUsage(os.Stdout, flags)
+			return nil
+		} else if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		printUsage(os.Stderr, flags)
+		return statusErr(2)
 	}
 
-	rootCmd.Flags().StringP("http", "l", "", "start the http server at the specified address")
-	rootCmd.Flags().BoolP("metadata", "m", false, "only print the page's metadata")
-	rootCmd.Flags().BoolP("text", "t", false, "only print the page's text")
-	rootCmd.Flags().BoolP("verbose", "v", false, "enable verbose logging")
+	srcPath := stdinPath
+	if flags.NArg() > 0 {
+		srcPath = flags.Arg(0)
+	}
 
-	err := rootCmd.Execute()
+	err := rootCmdHandler(srcPath)
 	if err != nil {
-		log.Fatalln(err)
+		fmt.Fprintln(os.Stderr, err)
+		return statusErr(1)
+	}
+	return nil
+}
+
+func main() {
+	err := mainRun(os.Args)
+	if err != nil {
+		exitStatus := 1
+		if s, ok := err.(statusErr); ok {
+			exitStatus = int(s)
+		} else {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		os.Exit(exitStatus)
 	}
 }
 
-func rootCmdHandler(cmd *cobra.Command, args []string) {
-	// Start HTTP server
-	httpListen, _ := cmd.Flags().GetString("http")
+func rootCmdHandler(srcPath string) error {
 	if httpListen != "" {
-		http.HandleFunc("/", httpHandler)
-		log.Println("Starting HTTP server at", httpListen)
-		log.Fatal(http.ListenAndServe(httpListen, nil))
-	}
-
-	// Get cmd parameter
-	metadataOnly, _ := cmd.Flags().GetBool("metadata")
-	textOnly, _ := cmd.Flags().GetBool("text")
-	verbose, _ := cmd.Flags().GetBool("verbose")
-	if len(args) > 0 {
-		content, err := getContent(args[0], metadataOnly, textOnly, verbose)
+		nl, err := net.Listen("tcp", httpListen)
 		if err != nil {
-			log.Fatalln(err)
+			return err
 		}
-
-		fmt.Println(content)
-	} else {
-		_ = cmd.Help()
+		localhost := "localhost"
+		addr := nl.Addr().(*net.TCPAddr)
+		if addr.IP.String() != "::" {
+			localhost = addr.IP.String()
+		}
+		fmt.Fprintf(os.Stderr, "Starting HTTP server at http://%s:%d\n", localhost, addr.Port)
+		http.HandleFunc("/", httpHandler)
+		server := http.Server{Handler: http.DefaultServeMux}
+		return server.Serve(nl)
 	}
+
+	content, err := getContent(srcPath, metadataOnly, textOnly)
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Println(content)
+	return err
 }
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +155,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		log.Println("process URL", url)
-		content, err := getContent(url, metadataOnly, textOnly, false)
+		content, err := getContent(url, metadataOnly, textOnly)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -111,7 +174,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getContent(srcPath string, metadataOnly, textOnly, verbose bool) (string, error) {
+func getContent(srcPath string, metadataOnly, textOnly bool) (string, error) {
 	// Open or fetch web page that will be parsed
 	var (
 		pageURL   *nurl.URL
@@ -119,7 +182,12 @@ func getContent(srcPath string, metadataOnly, textOnly, verbose bool) (string, e
 	)
 
 	if _, isURL := validateURL(srcPath); isURL {
-		resp, err := http.Get(srcPath)
+		req, err := http.NewRequest("GET", srcPath, nil)
+		if err != nil {
+			return "", fmt.Errorf("failed to construct the request: %v", err)
+		}
+		req.Header.Add("User-Agent", userAgent)
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return "", fmt.Errorf("failed to fetch web page: %v", err)
 		}
@@ -128,30 +196,39 @@ func getContent(srcPath string, metadataOnly, textOnly, verbose bool) (string, e
 		pageURL = resp.Request.URL
 		srcReader = resp.Body
 	} else {
-		srcFile, err := os.Open(srcPath)
-		if err != nil {
-			return "", fmt.Errorf("failed to open source file: %v", err)
+		if srcPath == stdinPath {
+			defer os.Stdin.Close()
+			srcReader = os.Stdin
+		} else {
+			srcFile, err := os.Open(srcPath)
+			if err != nil {
+				return "", fmt.Errorf("failed to open source file: %v", err)
+			}
+			defer srcFile.Close()
+			srcReader = srcFile
 		}
-		defer srcFile.Close()
-
 		pageURL, _ = nurl.ParseRequestURI("http://fakehost.com")
-		srcReader = srcFile
 	}
 
-	// Use tee so the reader can be used twice
-	buf := bytes.NewBuffer(nil)
-	tee := io.TeeReader(srcReader, buf)
+	doc, err := dom.Parse(srcReader)
+	if err != nil {
+		return "", fmt.Errorf("HTML parse error: %w", err)
+	}
 
-	// Make sure the page is readable
-	if !readability.Check(tee) {
-		return "", fmt.Errorf("failed to parse page: the page is not readable")
+	// Make sure the page is "readerable"
+	if !readability.CheckDocument(doc) {
+		if force {
+			fmt.Fprintf(os.Stderr, "warning: the page might not have article contents\n")
+		} else {
+			return "", errors.New("failed to detect readable content on the page")
+		}
 	}
 
 	parser := readability.NewParser()
 	parser.Debug = verbose
 
 	// Get readable content from the reader
-	article, err := parser.Parse(buf, pageURL)
+	article, err := parser.ParseAndMutate(doc, pageURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse page: %v", err)
 	}
