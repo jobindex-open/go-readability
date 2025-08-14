@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	nurl "net/url"
@@ -16,6 +17,8 @@ import (
 
 	readability "codeberg.org/readeck/go-readability"
 	"github.com/go-shiori/dom"
+	"github.com/lmittmann/tint"
+	"github.com/mattn/go-isatty"
 	flag "github.com/spf13/pflag"
 )
 
@@ -225,7 +228,9 @@ func getContent(srcPath string, metadataOnly, textOnly bool) (string, error) {
 	}
 
 	parser := readability.NewParser()
-	parser.Debug = verbose
+	if verbose {
+		parser.Logger = newLogger(os.Stderr)
+	}
 
 	// Get readable content from the reader
 	article, err := parser.ParseAndMutate(doc, pageURL)
@@ -261,4 +266,25 @@ func getContent(srcPath string, metadataOnly, textOnly bool) (string, error) {
 func validateURL(path string) (*nurl.URL, bool) {
 	url, err := nurl.ParseRequestURI(path)
 	return url, err == nil && strings.HasPrefix(url.Scheme, "http")
+}
+
+func newLogger(w *os.File) *slog.Logger {
+	return slog.New(
+		tint.NewHandler(w, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: "15:04:05.000",
+			NoColor:    !isatty.IsTerminal(w.Fd()),
+			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+				if a.Value.Kind() == slog.KindAny {
+					if _, ok := a.Value.Any().(error); ok {
+						return tint.Attr(9, a)
+					}
+				}
+				if a.Value.Kind() == slog.KindFloat64 {
+					return slog.String(a.Key, fmt.Sprintf("%05.1f", a.Value.Float64()))
+				}
+				return a
+			},
+		}),
+	)
 }

@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	shtml "html"
-	"log"
+	"io"
+	"log/slog"
 	"math"
 	nurl "net/url"
 	"regexp"
@@ -111,8 +112,10 @@ type Parser struct {
 	KeepClasses bool
 	// TagsToScore is element tags to score by default.
 	TagsToScore []string
-	// Debug determines if the log should be printed or not. Default: false.
+	// Deprecated: opt into printing logs to stderr. Use Logger instead.
 	Debug bool
+	// The structured logger to write to. The default log is written to io.Discard.
+	Logger *slog.Logger
 	// DisableJSONLD determines if metadata in JSON+LD will be extracted
 	// or not. Default: false.
 	DisableJSONLD bool
@@ -141,6 +144,8 @@ func NewParser() Parser {
 		KeepClasses:       false,
 		TagsToScore:       []string{"section", "h2", "h3", "h4", "h5", "h6", "p", "td", "pre"},
 		Debug:             false,
+		// TODO: switch to slog.DiscardHandler with go 1.24
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 }
 
@@ -737,8 +742,7 @@ func (ps *Parser) getNodeAncestors(node *html.Node, maxDepth int) []*html.Node {
 // element types), find the content that is most likely to be the
 // stuff a user wants to read. Then return it wrapped up in a div.
 func (ps *Parser) grabArticle() *html.Node {
-	ps.log("**** GRAB ARTICLE ****")
-
+	passNumber := 0
 	for {
 		doc := dom.Clone(ps.doc, true)
 
@@ -749,9 +753,12 @@ func (ps *Parser) grabArticle() *html.Node {
 
 		// We can't grab an article if we don't have a page!
 		if page == nil {
-			ps.log("no body found in document, abort")
+			ps.Logger.Error("no body found in document")
 			return nil
 		}
+
+		passNumber++
+		passLogger := ps.Logger.With(slog.Int("pass", passNumber))
 
 		// First, node prepping. Trash nodes that look cruddy (like ones
 		// with the class name "comment", etc), and turn divs into P
@@ -763,6 +770,8 @@ func (ps *Parser) grabArticle() *html.Node {
 
 	grabLoop:
 		for node != nil {
+			passLogger := passLogger.With(slog.Any("node", inspectNode(node)))
+
 			matchString := dom.ClassName(node) + " " + dom.ID(node)
 
 			if dom.TagName(node) == "html" {
@@ -770,7 +779,7 @@ func (ps *Parser) grabArticle() *html.Node {
 			}
 
 			if !ps.isProbablyVisible(node) {
-				ps.logf("removing hidden node: %q\n", matchString)
+				passLogger.Debug("removing hidden element")
 				node = ps.removeAndGetNext(node)
 				continue
 			}
@@ -779,6 +788,7 @@ func (ps *Parser) grabArticle() *html.Node {
 			// and "role = dialog"
 			if dom.GetAttribute(node, "aria-modal") == "true" &&
 				dom.GetAttribute(node, "role") == "dialog" {
+				passLogger.Debug("removing modal dialog")
 				node = ps.removeAndGetNext(node)
 				continue
 			}
@@ -793,6 +803,7 @@ func (ps *Parser) grabArticle() *html.Node {
 					itemprop := dom.GetAttribute(next, "itemprop")
 					if strings.Contains(itemprop, "name") {
 						ps.articleByline = ps.getInnerText(next, false)
+						passLogger.Debug("removing byline")
 						node = ps.removeAndGetNext(node)
 						continue grabLoop
 					}
@@ -804,15 +815,15 @@ func (ps *Parser) grabArticle() *html.Node {
 				// tests and the bylines end up different.
 				if nChar := charCount(bylineText); nChar > 0 && nChar < 100 {
 					ps.articleByline = normalizeWhitespace(bylineText)
+					passLogger.Debug("removing byline")
 					node = ps.removeAndGetNext(node)
 					continue
 				}
 			}
 
 			if shouldRemoveTitleHeader && ps.headerDuplicatesTitle(node) {
-				ps.logf("removing header: %q duplicate of %q\n",
-					ps.getInnerText(node, true), normalizeWhitespace(ps.articleTitle))
 				shouldRemoveTitleHeader = false
+				passLogger.Debug("removing heading that duplicates title", slog.String("title", ps.articleTitle))
 				node = ps.removeAndGetNext(node)
 				continue
 			}
@@ -825,14 +836,14 @@ func (ps *Parser) grabArticle() *html.Node {
 					!ps.hasAncestorTag(node, "table", 3, nil) &&
 					!ps.hasAncestorTag(node, "code", 3, nil) &&
 					nodeTagName != "body" && nodeTagName != "a" {
-					ps.logf("removing unlikely candidate: %q\n", matchString)
+					passLogger.Debug("removing unlikely candidate")
 					node = ps.removeAndGetNext(node)
 					continue
 				}
 
 				role := dom.GetAttribute(node, "role")
 				if _, include := unlikelyRoles[role]; include {
-					ps.logf("removing content with role %q: %q\n", role, matchString)
+					passLogger.Debug("removing content due to role")
 					node = ps.removeAndGetNext(node)
 					continue
 				}
@@ -844,6 +855,7 @@ func (ps *Parser) grabArticle() *html.Node {
 			case "div", "section", "header",
 				"h1", "h2", "h3", "h4", "h5", "h6":
 				if ps.isElementWithoutContent(node) {
+					passLogger.Debug("removing element with no content")
 					node = ps.removeAndGetNext(node)
 					continue
 				}
@@ -990,7 +1002,7 @@ func (ps *Parser) grabArticle() *html.Node {
 		for i := 0; i < len(candidates); i++ {
 			candidate := candidates[i]
 			candidateScore := ps.getContentScore(candidate) * (1 - ps.getLinkDensity(candidate))
-			ps.logf("candidate %q with score: %f\n", inspectNode(candidate), candidateScore)
+			passLogger.Debug("scored candidate", slog.Float64("score", candidateScore), slog.Any("node", inspectNode(candidate)))
 			ps.setContentScore(candidate, candidateScore)
 		}
 
@@ -1022,8 +1034,8 @@ func (ps *Parser) grabArticle() *html.Node {
 			neededToCreateTopCandidate = true
 			// Move everything (not just elements, also text nodes etc.)
 			// into the container so we even include text directly in the body:
+			passLogger.Debug("wrapping body children in a div element")
 			for page.FirstChild != nil {
-				ps.logf("moving child out: %q\n", inspectNode(page.FirstChild))
 				dom.AppendChild(topCandidate, page.FirstChild)
 			}
 
@@ -1090,7 +1102,7 @@ func (ps *Parser) grabArticle() *html.Node {
 				}
 
 				if parentScore > lastScore {
-					// Alright! We found a better parent to use.
+					passLogger.Debug("found a better candidate by walking up the tree", slog.Float64("score", parentScore))
 					topCandidate = parentOfTopCandidate
 					break
 				}
@@ -1162,6 +1174,7 @@ func (ps *Parser) grabArticle() *html.Node {
 				// element, like a form or td tag. Turn it into a div
 				// so it doesn't get filtered out later by accident.
 				if indexOf(alterToDivExceptions, dom.TagName(sibling)) == -1 {
+					passLogger.Debug("converting node into a div", slog.Any("node", inspectNode(sibling)))
 					ps.setNodeTag(sibling, "div")
 				}
 
@@ -1174,9 +1187,14 @@ func (ps *Parser) grabArticle() *html.Node {
 			}
 		}
 
+		// Inject passLogger attributes into all logging for the duration of prepArticle. This
+		// implementation isn't thread-safe, so a temporary override should be fine.
+		oldLogger := ps.Logger
+		ps.Logger = passLogger
 		// So we have all of the content that we need. Now we clean
 		// it up for presentation.
 		ps.prepArticle(articleContent)
+		ps.Logger = oldLogger
 
 		if neededToCreateTopCandidate {
 			// We already created a fake div thing, and there wouldn't
@@ -1216,38 +1234,31 @@ func (ps *Parser) grabArticle() *html.Node {
 		// finding the -right- content.
 		textLength, _ := countCharsAndCommas(articleContent)
 		if textLength < ps.CharThresholds {
+			passLogger.Info("parsed article length is too short", slog.Int("textLength", textLength))
 			parseSuccessful = false
 
-			if ps.flags.stripUnlikelys {
-				ps.flags.stripUnlikelys = false
-				ps.attempts = append(ps.attempts, parseAttempt{
-					articleContent: articleContent,
-					textLength:     textLength,
-				})
-			} else if ps.flags.useWeightClasses {
-				ps.flags.useWeightClasses = false
-				ps.attempts = append(ps.attempts, parseAttempt{
-					articleContent: articleContent,
-					textLength:     textLength,
-				})
-			} else if ps.flags.cleanConditionally {
-				ps.flags.cleanConditionally = false
-				ps.attempts = append(ps.attempts, parseAttempt{
-					articleContent: articleContent,
-					textLength:     textLength,
-				})
-			} else {
-				ps.attempts = append(ps.attempts, parseAttempt{
-					articleContent: articleContent,
-					textLength:     textLength,
-				})
+			ps.attempts = append(ps.attempts, parseAttempt{
+				articleContent: articleContent,
+				textLength:     textLength,
+			})
 
+			if ps.flags.stripUnlikelys {
+				passLogger.Info("attempting another pass with stripUnlikelys disabled")
+				ps.flags.stripUnlikelys = false
+			} else if ps.flags.useWeightClasses {
+				passLogger.Info("attempting another pass with weight classes disabled")
+				ps.flags.useWeightClasses = false
+			} else if ps.flags.cleanConditionally {
+				passLogger.Info("attempting another pass with cleanConditionally disabled")
+				ps.flags.cleanConditionally = false
+			} else {
 				// No luck after removing flags, just return the
 				// longest text we found during the different loops *
 				sort.Slice(ps.attempts, func(i, j int) bool {
 					return ps.attempts[i].textLength > ps.attempts[j].textLength
 				})
 
+				passLogger.Info("using results of the attempt that yielded the longest text", slog.Int("textLength", ps.attempts[0].textLength))
 				// But first check if we actually have something
 				if ps.attempts[0].textLength == 0 {
 					return nil
@@ -1282,7 +1293,7 @@ func (ps *Parser) getJSONLD() (map[string]string, error) {
 		var parsedContent interface{}
 		err := json.Unmarshal([]byte(content), &parsedContent)
 		if err != nil {
-			ps.logf("error while decoding json: %v", err)
+			ps.Logger.Warn("error decoding JSON-LD", slog.Any("err", err))
 			return
 		}
 
@@ -1301,7 +1312,7 @@ func (ps *Parser) getJSONLD() (map[string]string, error) {
 			parsed = pc
 		}
 		if parsed == nil {
-			ps.log("unrecognized JSON-LD structure")
+			ps.Logger.Warn("unsupported JSON-LD structure")
 			return
 		}
 
@@ -2087,6 +2098,8 @@ func (ps *Parser) cleanConditionally(element *html.Node, tag string) {
 	// without effecting the traversal.
 	// TODO: Consider taking into account original contentScore here.
 	ps.removeNodes(dom.GetElementsByTagName(element, tag), func(node *html.Node) bool {
+		logger := ps.Logger.With(slog.Any("cleanConditionally", inspectNode(node)))
+
 		// First check if this node IS data table, in which case don't remove it.
 		if tag == "table" && ps.isReadabilityDataTable(node) {
 			return false
@@ -2105,6 +2118,7 @@ func (ps *Parser) cleanConditionally(element *html.Node, tag string) {
 		var contentScore int
 		weight := ps.getClassWeight(node)
 		if weight+contentScore < 0 {
+			logger.Debug("low class weight score", slog.Int("weight", weight))
 			return true
 		}
 
@@ -2233,28 +2247,28 @@ func (ps *Parser) cleanConditionally(element *html.Node, tag string) {
 
 			haveToRemove := false
 			if imgCount > 1 && float64(pCount)/float64(imgCount) < 0.5 && !ps.hasAncestorTag(node, "figure", 3, nil) {
-				ps.logf("bad p to img ratio (img=%d, p=%d)", pCount, imgCount)
+				logger.Debug("bad p to img ratio", slog.Int("p", pCount), slog.Int("img", imgCount))
 				haveToRemove = true
 			} else if !isList && (liCount+liCountOffset) > pCount {
-				ps.logf("too many li's outside of a list (li=%d%+d > p=%d)", liCount, liCountOffset, pCount)
+				logger.Debug("too many li's outside of a list", slog.Int("li", liCount), slog.Int("p", pCount))
 				haveToRemove = true
 			} else if float64(inputCount) > math.Floor(float64(pCount)/3) {
-				ps.logf("too many inputs per p (input=%d, p=%d)", inputCount, pCount)
+				logger.Debug("too many inputs per p", slog.Int("input", inputCount), slog.Int("p", pCount))
 				haveToRemove = true
 			} else if !isList && headingDensity < 0.9 && chars.Total < 25 && (imgCount == 0 || imgCount > 2) && linkDensity > 0 && !ps.hasAncestorTag(node, "figure", 3, nil) {
-				ps.logf("suspiciously short (headingDensity=%.2f, img=%d, linkDensity=%.2f)", headingDensity, imgCount, linkDensity)
+				logger.Debug("suspiciously short", slog.Float64("headingDensity", headingDensity), slog.Int("img", imgCount), slog.Float64("linkDensity", linkDensity))
 				haveToRemove = true
 			} else if !isList && weight < 25 && linkDensity > 0.2 {
-				ps.logf("low weight and a little linky (linkDensity=%.2f)", linkDensity)
+				logger.Debug("low weight and a little linky", slog.Float64("linkDensity", linkDensity), slog.Int("weight", weight))
 				haveToRemove = true
 			} else if weight >= 25 && linkDensity > 0.5 {
-				ps.logf("high weight and mostly links (linkDensity=%.2f)", linkDensity)
+				logger.Debug("high weight and mostly links", slog.Float64("linkDensity", linkDensity), slog.Int("weight", weight))
 				haveToRemove = true
 			} else if (embedCount == 1 && chars.Total < 75) || embedCount > 1 {
-				ps.logf("suspicious embed (embedCount=%d, contentLength=%d)", embedCount, chars.Total)
+				logger.Debug("suspicious embed", slog.Int("embed", embedCount), slog.Int("chars.Total", chars.Total))
 				haveToRemove = true
 			} else if imgCount == 0 && textDensity == 0 {
-				ps.log("no useful content (img=0, textDensity=0.0)")
+				logger.Debug("no useful content")
 				haveToRemove = true
 			}
 
@@ -2298,9 +2312,8 @@ func (ps *Parser) cleanMatchedNodes(e *html.Node, filter func(*html.Node, string
 func (ps *Parser) cleanHeaders(e *html.Node) {
 	headingNodes := ps.getAllNodesWithTag(e, "h1", "h2")
 	ps.removeNodes(headingNodes, func(node *html.Node) bool {
-		// Removing header with low class weight
-		if ps.getClassWeight(node) < 0 {
-			ps.logf("removing header with low class weight: %q\n", inspectNode(node))
+		if weight := ps.getClassWeight(node); weight < 0 {
+			ps.Logger.Debug("removing heading with low class weight score", slog.Any("node", inspectNode(node)), slog.Int("weight", weight))
 			return true
 		}
 		return false
@@ -2315,7 +2328,6 @@ func (ps *Parser) headerDuplicatesTitle(node *html.Node) bool {
 	}
 
 	heading := ps.getInnerText(node, false)
-	ps.logf("evaluating similarity of header: %q and %q\n", heading, ps.articleTitle)
 	return ps.textSimilarity(ps.articleTitle, heading) > 0.75
 }
 
@@ -2468,20 +2480,8 @@ func (ps *Parser) clearReadabilityAttr(node *html.Node) {
 	}
 }
 
-func (ps *Parser) log(args ...interface{}) {
-	if ps.Debug {
-		log.Println(args...)
-	}
-}
-
-func (ps *Parser) logf(format string, args ...interface{}) {
-	if ps.Debug {
-		log.Printf(format, args...)
-	}
-}
-
-// inspectNode wraps a HTML node to use with printf-style functions.
-func inspectNode(node *html.Node) fmt.Stringer {
+// inspectNode wraps a HTML node to use in structured logging
+func inspectNode(node *html.Node) slog.LogValuer {
 	return &inspectedNode{node}
 }
 
@@ -2489,15 +2489,45 @@ type inspectedNode struct {
 	node *html.Node
 }
 
-func (n *inspectedNode) String() string {
+func (n *inspectedNode) LogValue() slog.Value {
 	if n.node.Type == html.TextNode {
-		return n.node.Data
+		return slog.StringValue(n.node.Data)
 	}
-	attrs := ""
+
+	var tagPreview strings.Builder
+	tagPreview.WriteString("<")
+	tagPreview.WriteString(n.node.Data)
+
+	hasOtherAttributes := false
 	for _, attr := range n.node.Attr {
-		attrs += fmt.Sprintf(` %s="%s"`, attr.Key, attr.Val)
+		switch strings.ToLower(attr.Key) {
+		case "id", "class", "rel", "itemprop", "name", "type", "role", "for":
+			fmt.Fprintf(&tagPreview, ` %s=%q`, attr.Key, attr.Val)
+		case "src", "href":
+			val := attr.Val
+			if strings.HasPrefix(val, "data:") {
+				if v, _, ok := strings.Cut(val, ","); ok {
+					val = v + ",***"
+				}
+			} else if strings.HasPrefix(val, "javascript:") {
+				val = "javascript:***"
+			}
+			fmt.Fprintf(&tagPreview, ` %s=%q`, attr.Key, val)
+		default:
+			if !strings.HasPrefix(attr.Key, "data-readability-") {
+				hasOtherAttributes = true
+			}
+		}
 	}
-	return fmt.Sprintf("<%s%s>", n.node.Data, attrs)
+	if hasOtherAttributes {
+		tagPreview.WriteString(" ...")
+	}
+
+	if n.node.FirstChild == nil {
+		tagPreview.WriteString("/")
+	}
+	tagPreview.WriteString(">")
+	return slog.StringValue(tagPreview.String())
 }
 
 // UNUSED CODES

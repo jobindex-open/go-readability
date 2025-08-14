@@ -12,6 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/araddon/dateparse"
 	"github.com/go-shiori/dom"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"golang.org/x/net/html"
@@ -100,11 +101,11 @@ func Test_parser(t *testing.T) {
 				t1.Errorf("language, want %q got %q\n", metadata.Language, article.Language)
 			}
 
-			if !timesAreEqual(metadata.PublishedTime, article.PublishedTime) {
+			if !timesAreEqual(t1, metadata.PublishedTime, article.PublishedTime) {
 				t1.Errorf("date published, want %q got %q\n", metadata.PublishedTime, article.PublishedTime)
 			}
 
-			if !timesAreEqual(metadata.ModifiedTime, article.ModifiedTime) {
+			if !timesAreEqual(t1, metadata.ModifiedTime, article.ModifiedTime) {
 				t1.Errorf("date modified, want %q got %q\n", metadata.ModifiedTime, article.ModifiedTime)
 			}
 
@@ -382,7 +383,7 @@ func getNodeExcerpt(node *html.Node) string {
 	return outer[:120]
 }
 
-func timesAreEqual(metadataTimeString string, parsedTime *time.Time) bool {
+func timesAreEqual(t *testing.T, metadataTimeString string, parsedTime *time.Time) bool {
 	if metadataTimeString == "" && parsedTime == nil {
 		return true
 	}
@@ -391,7 +392,9 @@ func timesAreEqual(metadataTimeString string, parsedTime *time.Time) bool {
 		return false
 	}
 
-	ps := Parser{}
-	metadataTime := ps.getParsedDate(metadataTimeString)
-	return metadataTime.Equal(*parsedTime)
+	metadataTime, err := dateparse.ParseAny(metadataTimeString)
+	if err != nil {
+		t.Logf("error parsing %q: %v", metadataTimeString, err)
+	}
+	return err == nil && metadataTime.Equal(*parsedTime)
 }
