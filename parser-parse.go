@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"codeberg.org/readeck/go-readability/render"
 	"github.com/araddon/dateparse"
 	"github.com/go-shiori/dom"
 	"golang.org/x/net/html"
@@ -97,13 +98,13 @@ func (ps *Parser) ParseAndMutate(doc *html.Node, pageURL *nurl.URL) (Article, er
 		if metadata["excerpt"] == "" {
 			paragraphs := dom.GetElementsByTagName(articleContent, "p")
 			if len(paragraphs) > 0 {
-				metadata["excerpt"] = strings.TrimSpace(dom.TextContent(paragraphs[0]))
+				metadata["excerpt"] = strings.TrimSpace(render.InnerText(paragraphs[0]))
 			}
 		}
 
 		readableNode = dom.FirstElementChild(articleContent)
 		finalHTMLContent = dom.InnerHTML(articleContent)
-		finalTextContent = dom.TextContent(articleContent)
+		finalTextContent = render.InnerText(articleContent)
 		finalTextContent = strings.TrimSpace(finalTextContent)
 	}
 
