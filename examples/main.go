@@ -8,7 +8,7 @@ import (
 	"log"
 	"time"
 
-	readability "github.com/nielsproest/go-readability"
+	readability "github.com/jobindex-open/go-readability"
 )
 
 func main() {
