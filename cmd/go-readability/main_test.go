@@ -18,7 +18,9 @@ func Test_mainRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	inputFile.WriteString("<h1>Hello World</h1><p>This is an article.</p>")
+	if _, err := inputFile.WriteString("<h1>Hello World</h1><p>This is an article.</p>"); err != nil {
+		t.Fatal(err)
+	}
 	inputFile.Close()
 
 	gotStdout, gotStderr := captureOutput(func() {
@@ -60,14 +62,14 @@ func captureOutput(f func()) (stdout string, stderr string) {
 	// Read stdout
 	go func() {
 		var buf bytes.Buffer
-		io.Copy(&buf, rOut)
+		_, _ = io.Copy(&buf, rOut)
 		outC <- buf.String()
 	}()
 
 	// Read stderr
 	go func() {
 		var buf bytes.Buffer
-		io.Copy(&buf, rErr)
+		_, _ = io.Copy(&buf, rErr)
 		errC <- buf.String()
 	}()
 
