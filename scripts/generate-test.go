@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/go-shiori/dom"
-	readability "github.com/go-shiori/go-readability"
+	readability "github.com/jobindex-open/go-readability"
 	"golang.org/x/net/html"
 )
 

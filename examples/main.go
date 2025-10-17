@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 package main
@@ -7,7 +8,7 @@ import (
 	"log"
 	"time"
 
-	readability "github.com/go-shiori/go-readability"
+	readability "github.com/jobindex-open/go-readability"
 )
 
 func main() {

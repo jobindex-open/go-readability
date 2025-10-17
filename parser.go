@@ -14,38 +14,46 @@ import (
 	"time"
 
 	"github.com/go-shiori/dom"
-	"github.com/go-shiori/go-readability/internal/re2go"
 	"golang.org/x/net/html"
 )
 
 // All of the regular expressions in use within readability.
 // Defined up here so we don't instantiate them repeatedly in loops *.
 var (
-	rxVideos               = regexp.MustCompile(`(?i)//(www\.)?((dailymotion|youtube|youtube-nocookie|player\.vimeo|v\.qq)\.com|(archive|upload\.wikimedia)\.org|player\.twitch\.tv)`)
-	rxTokenize             = regexp.MustCompile(`(?i)\W+`)
-	rxWhitespace           = regexp.MustCompile(`(?i)^\s*$`)
-	rxHasContent           = regexp.MustCompile(`(?i)\S$`)
-	rxHashURL              = regexp.MustCompile(`(?i)^#.+`)
-	rxPropertyPattern      = regexp.MustCompile(`(?i)\s*(dc|dcterm|og|article|twitter)\s*:\s*(author|creator|description|title|site_name|published_time|modified_time|image\S*)\s*`)
-	rxNamePattern          = regexp.MustCompile(`(?i)^\s*(?:(dc|dcterm|article|og|twitter|weibo:(article|webpage))\s*[\.:]\s*)?(author|creator|description|title|site_name|published_time|modified_time|image)\s*$`)
-	rxTitleSeparator       = regexp.MustCompile(`(?i) [\|\-\\/>»] `)
-	rxTitleHierarchySep    = regexp.MustCompile(`(?i) [\\/>»] `)
-	rxTitleRemoveFinalPart = regexp.MustCompile(`(?i)(.*)[\|\-\\/>»] .*`)
-	rxTitleRemove1stPart   = regexp.MustCompile(`(?i)[^\|\-\\/>»]*[\|\-\\/>»](.*)`)
-	rxTitleAnySeparator    = regexp.MustCompile(`(?i)[\|\-\\/>»]+`)
-	rxDisplayNone          = regexp.MustCompile(`(?i)display\s*:\s*none`)
-	rxVisibilityHidden     = regexp.MustCompile(`(?i)visibility\s*:\s*hidden`)
-	rxSentencePeriod       = regexp.MustCompile(`(?i)\.( |$)`)
-	rxShareElements        = regexp.MustCompile(`(?i)(\b|_)(share|sharedaddy)(\b|_)`)
-	rxFaviconSize          = regexp.MustCompile(`(?i)(\d+)x(\d+)`)
-	rxLazyImageSrcset      = regexp.MustCompile(`(?i)\.(jpg|jpeg|png|webp)\s+\d`)
-	rxLazyImageSrc         = regexp.MustCompile(`(?i)^\s*\S+\.(jpg|jpeg|png|webp)\S*\s*$`)
-	rxImgExtensions        = regexp.MustCompile(`(?i)\.(jpg|jpeg|png|webp)`)
-	rxSrcsetURL            = regexp.MustCompile(`(?i)(\S+)(\s+[\d.]+[xw])?(\s*(?:,|$))`)
-	rxB64DataURL           = regexp.MustCompile(`(?i)^data:\s*([^\s;,]+)\s*;\s*base64\s*,`)
-	rxJsonLdArticleTypes   = regexp.MustCompile(`(?i)^Article|AdvertiserContentArticle|NewsArticle|AnalysisNewsArticle|AskPublicNewsArticle|BackgroundNewsArticle|OpinionNewsArticle|ReportageNewsArticle|ReviewNewsArticle|Report|SatiricalArticle|ScholarlyArticle|MedicalScholarlyArticle|SocialMediaPosting|BlogPosting|LiveBlogPosting|DiscussionForumPosting|TechArticle|APIReference$`)
-	rxCDATA                = regexp.MustCompile(`^\s*<!\[CDATA\[|\]\]>\s*$`)
-	rxSchemaOrg            = regexp.MustCompile(`(?i)^https?\:\/\/schema\.org\/?$`)
+	RxUnlikelyCandidates   = regexp.MustCompile(`(?i)-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote`)
+	RxOkMaybeItsACandidate = regexp.MustCompile(`(?i)and|article|body|column|content|main|shadow`)
+	RxPositive             = regexp.MustCompile(`(?i)article|body|content|entry|hentry|h-entry|main|page|pagination|post|text|blog|story`)
+	RxNegative             = regexp.MustCompile(`(?i)-ad-|hidden|^hid$| hid$| hid |^hid |banner|combx|comment|com-|contact|foot|footer|footnote|gdpr|masthead|media|meta|outbrain|promo|related|scroll|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|tool|widget`)
+	RxByline               = regexp.MustCompile(`(?i)byline|author|dateline|writtenby|p-author`)
+	RxNormalize            = regexp.MustCompile(`(?i)\s{2,}`)
+	RxVideos               = regexp.MustCompile(`(?i)//(www\.)?((dailymotion|youtube|youtube-nocookie|player\.vimeo|v\.qq)\.com|(archive|upload\.wikimedia)\.org|player\.twitch\.tv)`)
+	RxTokenize             = regexp.MustCompile(`(?i)\W+`)
+	RxWhitespace           = regexp.MustCompile(`(?i)^\s*$`)
+	RxHasContent           = regexp.MustCompile(`(?i)\S$`)
+	RxHashURL              = regexp.MustCompile(`(?i)^#.+`)
+	RxPropertyPattern      = regexp.MustCompile(`(?i)\s*(dc|dcterm|og|article|twitter)\s*:\s*(author|creator|description|title|site_name|published_time|modified_time|image\S*)\s*`)
+	RxNamePattern          = regexp.MustCompile(`(?i)^\s*(?:(dc|dcterm|article|og|twitter|weibo:(article|webpage))\s*[\.:]\s*)?(author|creator|description|title|site_name|published_time|modified_time|image)\s*$`)
+	RxTitleSeparator       = regexp.MustCompile(`(?i) [\|\-\\/>»] `)
+	RxTitleHierarchySep    = regexp.MustCompile(`(?i) [\\/>»] `)
+	RxTitleRemoveFinalPart = regexp.MustCompile(`(?i)(.*)[\|\-\\/>»] .*`)
+	RxTitleRemove1stPart   = regexp.MustCompile(`(?i)[^\|\-\\/>»]*[\|\-\\/>»](.*)`)
+	RxTitleAnySeparator    = regexp.MustCompile(`(?i)[\|\-\\/>»]+`)
+	RxDisplayNone          = regexp.MustCompile(`(?i)display\s*:\s*none`)
+	RxVisibilityHidden     = regexp.MustCompile(`(?i)visibility\s*:\s*hidden`)
+	RxSentencePeriod       = regexp.MustCompile(`(?i)\.( |$)`)
+	RxShareElements        = regexp.MustCompile(`(?i)(\b|_)(share|sharedaddy)(\b|_)`)
+	RxFaviconSize          = regexp.MustCompile(`(?i)(\d+)x(\d+)`)
+	RxLazyImageSrcset      = regexp.MustCompile(`(?i)\.(jpg|jpeg|png|webp)\s+\d`)
+	RxLazyImageSrc         = regexp.MustCompile(`(?i)^\s*\S+\.(jpg|jpeg|png|webp)\S*\s*$`)
+	RxImgExtensions        = regexp.MustCompile(`(?i)\.(jpg|jpeg|png|webp)`)
+	RxSrcsetURL            = regexp.MustCompile(`(?i)(\S+)(\s+[\d.]+[xw])?(\s*(?:,|$))`)
+	RxB64DataURL           = regexp.MustCompile(`(?i)^data:\s*([^\s;,]+)\s*;\s*base64\s*,`)
+	RxJsonLdArticleTypes   = regexp.MustCompile(`(?i)^Article|AdvertiserContentArticle|NewsArticle|AnalysisNewsArticle|AskPublicNewsArticle|BackgroundNewsArticle|OpinionNewsArticle|ReportageNewsArticle|ReviewNewsArticle|Report|SatiricalArticle|ScholarlyArticle|MedicalScholarlyArticle|SocialMediaPosting|BlogPosting|LiveBlogPosting|DiscussionForumPosting|TechArticle|APIReference$`)
+	RxCDATA                = regexp.MustCompile(`^\s*<!\[CDATA\[|\]\]>\s*$`)
+	RxSchemaOrg            = regexp.MustCompile(`(?i)^https?\:\/\/schema\.org\/?$`)
+	// Commas as used in Latin, Sindhi, Chinese and various other scripts.
+	// see: https://en.wikipedia.org/wiki/Comma#Comma_variants
+	RxCommas = regexp.MustCompile("\u002C|\u060C|\uFE50|\uFE10|\uFE11|\u2E41|\u2E34|\u2E32|\uFF0C")
 )
 
 // Constants that used by readability.
@@ -115,9 +123,6 @@ type Parser struct {
 	// DisableJSONLD determines if metadata in JSON+LD will be extracted
 	// or not. Default: false.
 	DisableJSONLD bool
-	// AllowedVideoRegex is a regular expression that matches video URLs that should be
-	// allowed to be included in the article content. If undefined, it will use default filter.
-	AllowedVideoRegex *regexp.Regexp
 
 	doc             *html.Node
 	documentURI     *nurl.URL
@@ -308,8 +313,8 @@ func (ps *Parser) fixRelativeURIs(articleContent *html.Node) {
 		}
 
 		if srcset != "" {
-			newSrcset := rxSrcsetURL.ReplaceAllStringFunc(srcset, func(s string) string {
-				p := rxSrcsetURL.FindStringSubmatch(s)
+			newSrcset := RxSrcsetURL.ReplaceAllStringFunc(srcset, func(s string) string {
+				p := RxSrcsetURL.FindStringSubmatch(s)
 				return toAbsoluteURI(p[1], ps.documentURI) + p[2] + p[3]
 			})
 
@@ -362,14 +367,14 @@ func (ps *Parser) getArticleTitle() string {
 	}
 
 	// If there's a separator in the title, first remove the final part
-	if rxTitleSeparator.MatchString(curTitle) {
-		titleHadHierarchicalSeparators = rxTitleHierarchySep.MatchString(curTitle)
-		curTitle = rxTitleRemoveFinalPart.ReplaceAllString(origTitle, "$1")
+	if RxTitleSeparator.MatchString(curTitle) {
+		titleHadHierarchicalSeparators = RxTitleHierarchySep.MatchString(curTitle)
+		curTitle = RxTitleRemoveFinalPart.ReplaceAllString(origTitle, "$1")
 
 		// If the resulting title is too short (3 words or fewer), remove
 		// the first part instead:
 		if wordCount(curTitle) < 3 {
-			curTitle = rxTitleRemove1stPart.ReplaceAllString(origTitle, "$1")
+			curTitle = RxTitleRemove1stPart.ReplaceAllString(origTitle, "$1")
 		}
 	} else if strings.Contains(curTitle, ": ") {
 		// Check if we have an heading containing this exact string, so
@@ -406,13 +411,13 @@ func (ps *Parser) getArticleTitle() string {
 	}
 
 	curTitle = strings.TrimSpace(curTitle)
-	curTitle = re2go.NormalizeSpaces(curTitle)
+	curTitle = RxNormalize.ReplaceAllString(curTitle, " ")
 	// If we now have 4 words or fewer as our title, and either no
 	// 'hierarchical' separators (\, /, > or ») were found in the original
 	// title or we decreased the number of words by more than 1 word, use
 	// the original title.
 	curTitleWordCount := wordCount(curTitle)
-	tmpOrigTitle := rxTitleAnySeparator.ReplaceAllString(origTitle, "")
+	tmpOrigTitle := RxTitleAnySeparator.ReplaceAllString(origTitle, "")
 
 	if curTitleWordCount <= 4 &&
 		(!titleHadHierarchicalSeparators ||
@@ -448,7 +453,7 @@ func (ps *Parser) prepDocument() {
 // same node is returned.
 func (ps *Parser) nextNode(node *html.Node) *html.Node {
 	next := node
-	for next != nil && next.Type != html.ElementNode && rxWhitespace.MatchString(dom.TextContent(next)) {
+	for next != nil && next.Type != html.ElementNode && RxWhitespace.MatchString(dom.TextContent(next)) {
 		next = next.NextSibling
 	}
 	return next
@@ -559,7 +564,7 @@ func (ps *Parser) prepArticle(articleContent *html.Node) {
 
 	ps.forEachNode(dom.Children(articleContent), func(topCandidate *html.Node, _ int) {
 		ps.cleanMatchedNodes(topCandidate, func(node *html.Node, nodeClassID string) bool {
-			return rxShareElements.MatchString(nodeClassID) && charCount(dom.TextContent(node)) < shareElementThreshold
+			return RxShareElements.MatchString(nodeClassID) && charCount(dom.TextContent(node)) < shareElementThreshold
 		})
 	})
 
@@ -688,11 +693,11 @@ func (ps *Parser) getNextNode(node *html.Node, ignoreSelfAndKids bool) *html.Nod
 // The way it works: it splits both texts into words and then finds words that are unique in
 // second text the result is given by the lower length of unique parts.
 func (ps *Parser) textSimilarity(textA, textB string) float64 {
-	tokensA := rxTokenize.Split(strings.ToLower(textA), -1)
+	tokensA := RxTokenize.Split(strings.ToLower(textA), -1)
 	tokensA = strFilter(tokensA, func(s string) bool { return s != "" })
 	mapTokensA := sliceToMap(tokensA...)
 
-	tokensB := rxTokenize.Split(strings.ToLower(textB), -1)
+	tokensB := RxTokenize.Split(strings.ToLower(textB), -1)
 	tokensB = strFilter(tokensB, func(s string) bool { return s != "" })
 	uniqueTokensB := strFilter(tokensB, func(s string) bool {
 		_, existInA := mapTokensA[s]
@@ -715,7 +720,7 @@ func (ps *Parser) checkByline(node *html.Node, matchString string) bool {
 	rel := dom.GetAttribute(node, "rel")
 	itemprop := dom.GetAttribute(node, "itemprop")
 	nodeText := dom.TextContent(node)
-	if (rel == "author" || strings.Contains(itemprop, "author") || re2go.IsByline(matchString)) &&
+	if (rel == "author" || strings.Contains(itemprop, "author") || RxByline.MatchString(matchString)) &&
 		ps.isValidByline(nodeText) {
 		nodeText = strings.TrimSpace(nodeText)
 		nodeText = strings.Join(strings.Fields(nodeText), " ")
@@ -825,8 +830,8 @@ func (ps *Parser) grabArticle() *html.Node {
 			// Remove unlikely candidates
 			nodeTagName := dom.TagName(node)
 			if ps.flags.stripUnlikelys {
-				if re2go.IsUnlikelyCandidates(matchString) &&
-					!re2go.MaybeItsACandidate(matchString) &&
+				if RxUnlikelyCandidates.MatchString(matchString) &&
+					!RxOkMaybeItsACandidate.MatchString(matchString) &&
 					!ps.hasAncestorTag(node, "table", 3, nil) &&
 					!ps.hasAncestorTag(node, "code", 3, nil) &&
 					nodeTagName != "body" && nodeTagName != "a" {
@@ -927,7 +932,7 @@ func (ps *Parser) grabArticle() *html.Node {
 			contentScore := 1
 
 			// Add points for any commas within this paragraph.
-			contentScore += re2go.CountCommas(innerText)
+			contentScore += len(RxCommas.Split(innerText, -1)) - 1
 
 			// For every 100 characters in this paragraph, add another point. Up to 3 points.
 			contentScore += int(math.Min(math.Floor(float64(charCount(innerText))/100.0), 3.0))
@@ -1136,7 +1141,7 @@ func (ps *Parser) grabArticle() *html.Node {
 					if nodeLength > 80 && linkDensity < 0.25 {
 						appendNode = true
 					} else if nodeLength < 80 && nodeLength > 0 && linkDensity == 0 &&
-						rxSentencePeriod.MatchString(nodeContent) {
+						RxSentencePeriod.MatchString(nodeContent) {
 						appendNode = true
 					}
 				}
@@ -1270,7 +1275,7 @@ func (ps *Parser) getJSONLD() (map[string]string, error) {
 		}
 
 		// Strip CDATA markers if present
-		content := rxCDATA.ReplaceAllString(dom.TextContent(jsonLdElement), "")
+		content := RxCDATA.ReplaceAllString(dom.TextContent(jsonLdElement), "")
 
 		// Decode JSON
 		var parsed map[string]interface{}
@@ -1282,7 +1287,7 @@ func (ps *Parser) getJSONLD() (map[string]string, error) {
 
 		// Check context
 		strContext, isString := parsed["@context"].(string)
-		if !isString || !rxSchemaOrg.MatchString(strContext) {
+		if !isString || !RxSchemaOrg.MatchString(strContext) {
 			return
 		}
 
@@ -1300,7 +1305,7 @@ func (ps *Parser) getJSONLD() (map[string]string, error) {
 				}
 
 				strType, isString := objGraph["@type"].(string)
-				if isString && rxJsonLdArticleTypes.MatchString(strType) {
+				if isString && RxJsonLdArticleTypes.MatchString(strType) {
 					parsed = objGraph
 					break
 				}
@@ -1309,7 +1314,7 @@ func (ps *Parser) getJSONLD() (map[string]string, error) {
 
 		// Once again, make sure parsed has valid @type
 		strType, isString := parsed["@type"].(string)
-		if !isString || !rxJsonLdArticleTypes.MatchString(strType) {
+		if !isString || !RxJsonLdArticleTypes.MatchString(strType) {
 			return
 		}
 
@@ -1403,7 +1408,7 @@ func (ps *Parser) getArticleMetadata(jsonLd map[string]string) map[string]string
 		name := ""
 
 		if elementProperty != "" {
-			matches = rxPropertyPattern.FindAllString(elementProperty, -1)
+			matches = RxPropertyPattern.FindAllString(elementProperty, -1)
 			for i := len(matches) - 1; i >= 0; i-- {
 				// Convert to lowercase, and remove any whitespace
 				// so we can match belops.
@@ -1414,7 +1419,7 @@ func (ps *Parser) getArticleMetadata(jsonLd map[string]string) map[string]string
 			}
 		}
 
-		if len(matches) == 0 && elementName != "" && rxNamePattern.MatchString(elementName) {
+		if len(matches) == 0 && elementName != "" && RxNamePattern.MatchString(elementName) {
 			// Convert to lowercase, remove any whitespace, and convert
 			// dots to colons so we can match belops.
 			name = strings.ToLower(elementName)
@@ -1539,7 +1544,7 @@ func (ps *Parser) unwrapNoscriptImages(doc *html.Node) {
 				return
 			}
 
-			if rxImgExtensions.MatchString(attr.Val) {
+			if RxImgExtensions.MatchString(attr.Val) {
 				return
 			}
 		}
@@ -1583,7 +1588,7 @@ func (ps *Parser) unwrapNoscriptImages(doc *html.Node) {
 					continue
 				}
 
-				if attr.Key == "src" || attr.Key == "srcset" || rxImgExtensions.MatchString(attr.Val) {
+				if attr.Key == "src" || attr.Key == "srcset" || RxImgExtensions.MatchString(attr.Val) {
 					if dom.GetAttribute(newImg, attr.Key) == attr.Val {
 						continue
 					}
@@ -1619,7 +1624,7 @@ func (ps *Parser) hasSingleTagInsideElement(element *html.Node, tag string) bool
 
 	// And there should be no text nodes with real content
 	return !ps.someNode(dom.ChildNodes(element), func(node *html.Node) bool {
-		return node.Type == html.TextNode && rxHasContent.MatchString(dom.TextContent(node))
+		return node.Type == html.TextNode && RxHasContent.MatchString(dom.TextContent(node))
 	})
 }
 
@@ -1664,7 +1669,7 @@ func (ps *Parser) isWhitespace(node *html.Node) bool {
 func (ps *Parser) getInnerText(node *html.Node, normalizeSpaces bool) string {
 	textContent := strings.TrimSpace(dom.TextContent(node))
 	if normalizeSpaces {
-		textContent = re2go.NormalizeSpaces(textContent)
+		textContent = RxNormalize.ReplaceAllString(textContent, " ")
 	}
 	return textContent
 }
@@ -1713,7 +1718,7 @@ func (ps *Parser) getLinkDensity(element *html.Node) float64 {
 		href = strings.TrimSpace(href)
 
 		coefficient := 1.0
-		if href != "" && rxHashURL.MatchString(href) {
+		if href != "" && RxHashURL.MatchString(href) {
 			coefficient = 0.3
 		}
 
@@ -1735,22 +1740,22 @@ func (ps *Parser) getClassWeight(node *html.Node) int {
 
 	// Look for a special classname
 	if nodeClassName := dom.ClassName(node); nodeClassName != "" {
-		if re2go.IsNegativeClass(nodeClassName) {
+		if RxNegative.MatchString(nodeClassName) {
 			weight -= 25
 		}
 
-		if re2go.IsPositiveClass(nodeClassName) {
+		if RxPositive.MatchString(nodeClassName) {
 			weight += 25
 		}
 	}
 
 	// Look for a special ID
 	if nodeID := dom.ID(node); nodeID != "" {
-		if re2go.IsNegativeClass(nodeID) {
+		if RxNegative.MatchString(nodeID) {
 			weight -= 25
 		}
 
-		if re2go.IsPositiveClass(nodeID) {
+		if RxPositive.MatchString(nodeID) {
 			weight += 25
 		}
 	}
@@ -1762,10 +1767,6 @@ func (ps *Parser) getClassWeight(node *html.Node) int {
 // (Unless it's a youtube/vimeo video. People love movies.)
 func (ps *Parser) clean(node *html.Node, tag string) {
 	isEmbed := indexOf([]string{"object", "embed", "iframe"}, tag) != -1
-	rxVideoVilter := ps.AllowedVideoRegex
-	if rxVideoVilter == nil {
-		rxVideoVilter = rxVideos
-	}
 
 	ps.removeNodes(dom.GetElementsByTagName(node, tag), func(element *html.Node) bool {
 		// Allow youtube and vimeo videos through as people usually want to see those.
@@ -1773,13 +1774,13 @@ func (ps *Parser) clean(node *html.Node, tag string) {
 			// First, check the elements attributes to see if any of them contain
 			// youtube or vimeo
 			for _, attr := range element.Attr {
-				if rxVideoVilter.MatchString(attr.Val) {
+				if RxVideos.MatchString(attr.Val) {
 					return false
 				}
 			}
 
 			// For embed with <object> tag, check inner HTML as well.
-			if dom.TagName(element) == "object" && rxVideoVilter.MatchString(dom.InnerHTML(element)) {
+			if dom.TagName(element) == "object" && RxVideos.MatchString(dom.InnerHTML(element)) {
 				return false
 			}
 		}
@@ -1919,10 +1920,10 @@ func (ps *Parser) fixLazyImages(root *html.Node) {
 		// In some sites (e.g. Kotaku), they put 1px square image as base64 data uri in
 		// the src attribute. So, here we check if the data uri is too short, just might
 		// as well remove it.
-		if src != "" && rxB64DataURL.MatchString(src) {
+		if src != "" && RxB64DataURL.MatchString(src) {
 			// Make sure it's not SVG, because SVG can have a meaningful image in
 			// under 133 bytes.
-			parts := rxB64DataURL.FindStringSubmatch(src)
+			parts := RxB64DataURL.FindStringSubmatch(src)
 			if parts[1] == "image/svg+xml" {
 				return
 			}
@@ -1935,7 +1936,7 @@ func (ps *Parser) fixLazyImages(root *html.Node) {
 					continue
 				}
 
-				if rxImgExtensions.MatchString(attr.Val) && isValidURL(attr.Val) {
+				if RxImgExtensions.MatchString(attr.Val) && isValidURL(attr.Val) {
 					srcCouldBeRemoved = true
 					break
 				}
@@ -1965,9 +1966,9 @@ func (ps *Parser) fixLazyImages(root *html.Node) {
 			}
 
 			copyTo := ""
-			if rxLazyImageSrcset.MatchString(attr.Val) {
+			if RxLazyImageSrcset.MatchString(attr.Val) {
 				copyTo = "srcset"
-			} else if rxLazyImageSrc.MatchString(attr.Val) {
+			} else if RxLazyImageSrc.MatchString(attr.Val) {
 				copyTo = "src"
 			}
 
@@ -1996,12 +1997,6 @@ func (ps *Parser) fixLazyImages(root *html.Node) {
 func (ps *Parser) cleanConditionally(element *html.Node, tag string) {
 	if !ps.flags.cleanConditionally {
 		return
-	}
-
-	// Prepare regex video filter
-	rxVideoVilter := ps.AllowedVideoRegex
-	if rxVideoVilter == nil {
-		rxVideoVilter = rxVideos
 	}
 
 	// Gather counts for other typical elements embedded within.
@@ -2058,13 +2053,13 @@ func (ps *Parser) cleanConditionally(element *html.Node, tag string) {
 				// If this embed has attribute that matches video regex,
 				// don't delete it.
 				for _, attr := range embed.Attr {
-					if rxVideoVilter.MatchString(attr.Val) {
+					if RxVideos.MatchString(attr.Val) {
 						return false
 					}
 				}
 
 				// For embed with <object> tag, check inner HTML as well.
-				if dom.TagName(embed) == "object" && rxVideoVilter.MatchString(dom.InnerHTML(embed)) {
+				if dom.TagName(embed) == "object" && RxVideos.MatchString(dom.InnerHTML(embed)) {
 					return false
 				}
 
@@ -2152,8 +2147,8 @@ func (ps *Parser) isProbablyVisible(node *html.Node) bool {
 	// Have to null-check node.style and node.className.indexOf to deal
 	// with SVG and MathML nodes. Also check for "fallback-image" so that
 	// Wikimedia Math images are displayed
-	return (nodeStyle == "" || !rxDisplayNone.MatchString(nodeStyle)) &&
-		(nodeStyle == "" || !rxVisibilityHidden.MatchString(nodeStyle)) &&
+	return (nodeStyle == "" || !RxDisplayNone.MatchString(nodeStyle)) &&
+		(nodeStyle == "" || !RxVisibilityHidden.MatchString(nodeStyle)) &&
 		!dom.HasAttribute(node, "hidden") &&
 		(nodeAriaHidden == "" || nodeAriaHidden != "true" || strings.Contains(className, "fallback-image"))
 }
@@ -2190,7 +2185,7 @@ func (ps *Parser) getArticleFavicon() string {
 
 		size := 0
 		for _, sizesLocation := range []string{linkSizes, linkHref} {
-			sizeParts := rxFaviconSize.FindStringSubmatch(sizesLocation)
+			sizeParts := RxFaviconSize.FindStringSubmatch(sizesLocation)
 			if len(sizeParts) != 3 || sizeParts[1] != sizeParts[2] {
 				continue
 			}
@@ -2309,10 +2304,10 @@ func (ps *Parser) logf(format string, args ...interface{}) {
 // so here we commented it out so it can be used later if necessary.
 
 // var (
-// 	rxExtraneous   = regexp.MustCompile(`(?i)print|archive|comment|discuss|e[\-]?mail|share|reply|all|login|sign|single|utility`)
-// 	rxReplaceFonts = regexp.MustCompile(`(?i)<(/?)font[^>]*>`)
-// 	rxNextLink     = regexp.MustCompile(`(?i)(next|weiter|continue|>([^\|]|$)|»([^\|]|$))`)
-// 	rxPrevLink     = regexp.MustCompile(`(?i)(prev|earl|old|new|<|«)`)
+// 	RxExtraneous   = regexp.MustCompile(`(?i)print|archive|comment|discuss|e[\-]?mail|share|reply|all|login|sign|single|utility`)
+// 	RxReplaceFonts = regexp.MustCompile(`(?i)<(/?)font[^>]*>`)
+// 	RxNextLink     = regexp.MustCompile(`(?i)(next|weiter|continue|>([^\|]|$)|»([^\|]|$))`)
+// 	RxPrevLink     = regexp.MustCompile(`(?i)(prev|earl|old|new|<|«)`)
 // )
 
 // // findNode iterates over a NodeList and return the first node that passes

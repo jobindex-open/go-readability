@@ -1,4 +1,4 @@
-module github.com/go-shiori/go-readability
+module github.com/jobindex-open/go-readability
 
 go 1.23
 
