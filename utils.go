@@ -5,8 +5,6 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
-
-	"codeberg.org/readeck/go-readability/internal/re2go"
 )
 
 // indexOf returns the position of the first occurrence of a
@@ -34,7 +32,7 @@ func charCount(str string) int {
 // normalizeWhitespace trims leading and trailing whitespace and collapses all
 // consecutive chains of whitespace as a single space.
 func normalizeWhitespace(str string) string {
-	return re2go.NormalizeSpaces(strings.TrimSpace(str))
+	return RxNormalize.ReplaceAllString(strings.TrimSpace(str), " ")
 }
 
 // map of ASCII whitespace characters
