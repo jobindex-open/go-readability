@@ -2396,28 +2396,22 @@ func (ps *Parser) getArticleFavicon() string {
 	return toAbsoluteURI(favicon, ps.documentURI)
 }
 
-// removeComments find all comments in document then remove it.
+// removeComments removes all comment nodes in doc.
 func (ps *Parser) removeComments(doc *html.Node) {
-	// Find all comments
-	var comments []*html.Node
-	var finder func(*html.Node)
-
-	finder = func(node *html.Node) {
-		if node.Type == html.CommentNode {
-			comments = append(comments, node)
-		}
-
-		for child := node.FirstChild; child != nil; child = child.NextSibling {
-			finder(child)
+	var cleaner func(*html.Node)
+	cleaner = func(parent *html.Node) {
+		child := parent.FirstChild
+		for child != nil {
+			next := child.NextSibling
+			if child.Type == html.CommentNode {
+				parent.RemoveChild(child)
+			} else {
+				cleaner(child)
+			}
+			child = next
 		}
 	}
-
-	for child := doc.FirstChild; child != nil; child = child.NextSibling {
-		finder(child)
-	}
-
-	// Remove it
-	ps.removeNodes(comments, nil)
+	cleaner(doc)
 }
 
 // In dynamic language like JavaScript, we can easily add new
