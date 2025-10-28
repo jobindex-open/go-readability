@@ -1157,7 +1157,11 @@ func (ps *Parser) grabArticle() *html.Node {
 		topCandidateScore := ps.getContentScore(topCandidate)
 		topCandidateClassName := dom.ClassName(topCandidate)
 
-		passLogger.Info("determined the content container", slog.Float64("score", topCandidateScore), slog.Any("node", inspectNode(topCandidate)))
+		passLogger.Info("determined the content container",
+			slog.Float64("score", topCandidateScore),
+			slog.Any("node", inspectNode(topCandidate)),
+			slog.Any("xpath", inspectXPath(topCandidate)),
+		)
 
 		parentOfTopCandidate = topCandidate.Parent
 		siblings := dom.Children(parentOfTopCandidate)

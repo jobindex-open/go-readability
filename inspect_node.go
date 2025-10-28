@@ -68,3 +68,49 @@ func (n *inspectedNode) LogValue() slog.Value {
 
 	return slog.StringValue(tagPreview.String())
 }
+
+func inspectXPath(node *html.Node) slog.LogValuer {
+	return &xpathNode{node}
+}
+
+type xpathNode struct {
+	*html.Node
+}
+
+func (n *xpathNode) LogValue() slog.Value {
+	return slog.StringValue(getXPathSelector(n.Node))
+}
+
+// getXPathSelector constructs an XPath selector that uniquely identifies a DOM node.
+func getXPathSelector(node *html.Node) string {
+	p := node
+	if node.Type == html.TextNode {
+		p = node.Parent
+	}
+	var names []string
+
+	for p.Parent != nil {
+		elementPos := 1
+		for s := p.PrevSibling; s != nil; s = s.PrevSibling {
+			if s.Type == html.ElementNode && s.Data == p.Data {
+				elementPos++
+			}
+		}
+		names = append(names, "")
+		copy(names[1:], names)
+		names[0] = fmt.Sprintf("%s[%d]", p.Data, elementPos)
+		p = p.Parent
+	}
+
+	if node.Type == html.TextNode {
+		textNodePos := 1
+		for s := node.PrevSibling; s != nil; s = s.PrevSibling {
+			if s.Type == html.TextNode {
+				textNodePos++
+			}
+		}
+		names = append(names, fmt.Sprintf("text()[%d]", textNodePos))
+	}
+
+	return strings.Join(names, "/")
+}
