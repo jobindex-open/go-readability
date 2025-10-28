@@ -29,7 +29,7 @@ func (n *inspectedNode) LogValue() slog.Value {
 	hasOtherAttributes := false
 	for _, attr := range n.node.Attr {
 		switch strings.ToLower(attr.Key) {
-		case "id", "class", "rel", "itemprop", "name", "type", "role", "for":
+		case "id", "class", "rel", "itemprop", "name", "type", "role", "for", "action", "method":
 			fmt.Fprintf(&tagPreview, ` %s=%q`, attr.Key, attr.Val)
 		case "src", "href":
 			val := attr.Val
