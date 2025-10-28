@@ -455,7 +455,7 @@ func (ps *Parser) nextNode(node *html.Node) *html.Node {
 //
 //	<div>foo<br>bar<p>abc</p></div>
 func (ps *Parser) replaceBrs(elem *html.Node) {
-	ps.forEachNode(ps.getAllNodesWithTag(elem, "br"), func(br *html.Node, _ int) {
+	replaceBr := func(br *html.Node) *html.Node {
 		next := br.NextSibling
 
 		// Whether 2 or more <br> elements have been found and replaced
@@ -476,43 +476,63 @@ func (ps *Parser) replaceBrs(elem *html.Node) {
 			next.Parent.RemoveChild(next)
 			next = brSibling
 		}
+		if !replaced {
+			return br
+		}
 
 		// If we removed a <br> chain, replace the remaining <br> with a <p>. Add
 		// all sibling nodes as children of the <p> until we hit another <br>
 		// chain.
-		if replaced {
-			p := dom.CreateElement("p")
-			dom.ReplaceChild(br.Parent, p, br)
+		p := dom.CreateElement("p")
+		dom.ReplaceChild(br.Parent, p, br)
 
-			next = p.NextSibling
-			for next != nil {
-				// If we've hit another <br><br>, we're done adding children to this <p>.
-				if dom.TagName(next) == "br" {
-					nextElem := ps.nextNode(next.NextSibling)
-					if nextElem != nil && dom.TagName(nextElem) == "br" {
-						break
-					}
-				}
-
-				if !ps.isPhrasingContent(next) {
+		next = p.NextSibling
+		for next != nil {
+			// If we've hit another <br><br>, we're done adding children to this <p>.
+			if dom.TagName(next) == "br" {
+				nextElem := ps.nextNode(next.NextSibling)
+				if nextElem != nil && dom.TagName(nextElem) == "br" {
 					break
 				}
-
-				// Otherwise, make this node a child of the new <p>.
-				sibling := next.NextSibling
-				dom.AppendChild(p, next)
-				next = sibling
 			}
 
-			for p.LastChild != nil && ps.isWhitespace(p.LastChild) {
-				p.RemoveChild(p.LastChild)
+			if !ps.isPhrasingContent(next) {
+				break
 			}
 
-			if dom.TagName(p.Parent) == "p" {
-				ps.setNodeTag(p.Parent, "div")
-			}
+			// Otherwise, make this node a child of the new <p>.
+			sibling := next.NextSibling
+			dom.AppendChild(p, next)
+			next = sibling
 		}
-	})
+
+		for p.LastChild != nil && ps.isWhitespace(p.LastChild) {
+			p.RemoveChild(p.LastChild)
+		}
+
+		if dom.TagName(p.Parent) == "p" {
+			ps.setNodeTag(p.Parent, "div")
+		}
+
+		return p
+	}
+
+	var finder func(*html.Node)
+	finder = func(n *html.Node) {
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			if child.Type == html.ElementNode {
+				switch child.Data {
+				case "pre":
+					continue
+				case "br":
+					child = replaceBr(child)
+					continue
+				}
+			}
+			finder(child)
+		}
+	}
+	finder(elem)
 }
 
 // setNodeTag changes tag of the node to newTagName.
