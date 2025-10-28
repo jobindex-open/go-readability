@@ -353,8 +353,8 @@ func (ps *Parser) getArticleTitle() string {
 	titleHadHierarchicalSeparators := false
 
 	// If they had an element with tag "title" in their HTML
-	if nodes := dom.GetElementsByTagName(doc, "title"); len(nodes) > 0 {
-		origTitle = ps.getInnerText(nodes[0], true)
+	if titleNode := getElementByTagName(doc, "title"); titleNode != nil {
+		origTitle = ps.getInnerText(titleNode, true)
 		curTitle = origTitle
 	}
 
@@ -428,8 +428,8 @@ func (ps *Parser) prepDocument() {
 	// Remove all style tags in head
 	ps.removeNodes(dom.GetElementsByTagName(doc, "style"), nil)
 
-	if nodes := dom.GetElementsByTagName(doc, "body"); len(nodes) > 0 && nodes[0] != nil {
-		ps.replaceBrs(nodes[0])
+	if body := getElementByTagName(doc, "body"); body != nil {
+		ps.replaceBrs(body)
 	}
 
 	ps.replaceNodeTags(dom.GetElementsByTagName(doc, "font"), "span")
@@ -746,11 +746,7 @@ func (ps *Parser) grabArticle() *html.Node {
 	for {
 		doc := dom.Clone(ps.doc, true)
 
-		var page *html.Node
-		if nodes := dom.GetElementsByTagName(doc, "body"); len(nodes) > 0 {
-			page = nodes[0]
-		}
-
+		page := getElementByTagName(doc, "body")
 		// We can't grab an article if we don't have a page!
 		if page == nil {
 			ps.Logger.Error("no body found in document")
@@ -1609,13 +1605,8 @@ func (ps *Parser) unwrapNoscriptImages(doc *html.Node) {
 			return
 		}
 
-		tmpBodyElems := dom.GetElementsByTagName(tmpDoc, "body")
-		if len(tmpBodyElems) == 0 {
-			return
-		}
-
-		tmpBody := tmpBodyElems[0]
-		if !ps.isSingleImage(tmpBodyElems[0]) {
+		tmpBody := getElementByTagName(tmpDoc, "body")
+		if tmpBody == nil || !ps.isSingleImage(tmpBody) {
 			return
 		}
 
@@ -1626,10 +1617,10 @@ func (ps *Parser) unwrapNoscriptImages(doc *html.Node) {
 		if prevElement != nil && ps.isSingleImage(prevElement) {
 			prevImg := prevElement
 			if dom.TagName(prevImg) != "img" {
-				prevImg = dom.GetElementsByTagName(prevElement, "img")[0]
+				prevImg = getElementByTagName(prevElement, "img")
 			}
 
-			newImg := dom.GetElementsByTagName(tmpBody, "img")[0]
+			newImg := getElementByTagName(tmpBody, "img")
 			for _, attr := range prevImg.Attr {
 				if attr.Val == "" {
 					continue
@@ -1654,7 +1645,7 @@ func (ps *Parser) unwrapNoscriptImages(doc *html.Node) {
 			// Replace <noscript> with the image that was in it.
 			img := dom.FirstElementChild(tmpBody)
 			if img.Data != "img" {
-				img = dom.GetElementsByTagName(img, "img")[0]
+				img = getElementByTagName(img, "img")
 			}
 			if dom.GetAttribute(img, "width") == "1" && dom.GetAttribute(img, "height") == "1" {
 				return
@@ -1954,31 +1945,30 @@ func (ps *Parser) markDataTables(root *html.Node) {
 			continue
 		}
 
-		if captions := dom.GetElementsByTagName(table, "caption"); len(captions) > 0 {
-			if caption := captions[0]; caption != nil && len(dom.ChildNodes(caption)) > 0 {
-				ps.setReadabilityDataTable(table, true)
-				continue
+		var dataTableScanner func(n *html.Node) (bool, bool)
+		dataTableScanner = func(n *html.Node) (bool, bool) {
+			for child := n.FirstChild; child != nil; child = child.NextSibling {
+				if child.Type == html.ElementNode {
+					switch child.Data {
+					case "col", "colgroup", "tfoot", "thead", "th":
+						return true, true
+					case "caption":
+						if child.FirstChild != nil {
+							return true, true
+						}
+					case "table":
+						return false, true
+					}
+				}
+				if result, conclusive := dataTableScanner(child); conclusive {
+					return result, conclusive
+				}
 			}
+			return false, false
 		}
 
-		// If the table has a descendant with any of these tags, consider a data table:
-		hasDataTableDescendantTags := false
-		for _, descendantTag := range []string{"col", "colgroup", "tfoot", "thead", "th"} {
-			descendants := dom.GetElementsByTagName(table, descendantTag)
-			if len(descendants) > 0 && descendants[0] != nil {
-				hasDataTableDescendantTags = true
-				break
-			}
-		}
-
-		if hasDataTableDescendantTags {
-			ps.setReadabilityDataTable(table, true)
-			continue
-		}
-
-		// Nested tables indicates a layout table:
-		if len(dom.GetElementsByTagName(table, "table")) > 0 {
-			ps.setReadabilityDataTable(table, false)
+		if isDataTable, conclusive := dataTableScanner(table); conclusive {
+			ps.setReadabilityDataTable(table, isDataTable)
 			continue
 		}
 
@@ -2478,6 +2468,23 @@ func (ps *Parser) clearReadabilityAttr(node *html.Node) {
 	for child := dom.FirstElementChild(node); child != nil; child = dom.NextElementSibling(child) {
 		ps.clearReadabilityAttr(child)
 	}
+}
+
+// Traverse the descendants of parent to find the first element that matches tagName.
+func getElementByTagName(parent *html.Node, tagName string) *html.Node {
+	var finder func(n *html.Node) *html.Node
+	finder = func(n *html.Node) *html.Node {
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			if child.Type == html.ElementNode && child.Data == tagName {
+				return child
+			}
+			if found := finder(child); found != nil {
+				return found
+			}
+		}
+		return nil
+	}
+	return finder(parent)
 }
 
 // inspectNode wraps a HTML node to use in structured logging
