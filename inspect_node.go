@@ -55,5 +55,16 @@ func (n *inspectedNode) LogValue() slog.Value {
 		tagPreview.WriteString("/")
 	}
 	tagPreview.WriteString(">")
+
+	if c := n.node.FirstChild; c != nil && c.Type == html.TextNode && hasContent(c.Data) {
+		text := []rune(strings.TrimSpace(c.Data))
+		if len(text) > 15 {
+			tagPreview.WriteString(string(text[:12]))
+			tagPreview.WriteString("...")
+		} else {
+			tagPreview.WriteString(string(text))
+		}
+	}
+
 	return slog.StringValue(tagPreview.String())
 }
