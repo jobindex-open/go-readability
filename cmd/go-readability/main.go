@@ -55,8 +55,8 @@ var (
 )
 
 func printUsage(w io.Writer, flags *flag.FlagSet) {
-	fmt.Fprintln(w, "Usage:\n  go-readability [<flags>...] [<url> | <file> | -]\n\nFlags:")
-	fmt.Fprintln(w, flags.FlagUsages())
+	_, _ = fmt.Fprintln(w, "Usage:\n  go-readability [<flags>...] [<url> | <file> | -]\n\nFlags:")
+	_, _ = fmt.Fprintln(w, flags.FlagUsages())
 }
 
 type statusErr int
@@ -79,12 +79,12 @@ func mainRun(args []string) error {
 	if err := flags.Parse(args[1:]); err != nil || flags.NArg() > 1 {
 		if errors.Is(err, flag.ErrHelp) {
 			// When explicitly asked for command help, print usage string to stdout.
-			fmt.Fprintln(os.Stdout,
+			_, _ = fmt.Fprintln(os.Stdout,
 				"go-readability is a parser that extracts article contents from a web page.\n"+
 					"The source can be a URL or a filesystem path to a HTML file.\n"+
 					"Pass \"-\" or no argument to read the HTML document from standard input.\n"+
 					"Use \"--http :0\" to automatically choose an available port for the HTTP server.")
-			fmt.Fprintln(os.Stdout)
+			_, _ = fmt.Fprintln(os.Stdout)
 			printUsage(os.Stdout, flags)
 			return nil
 		} else if err != nil {
