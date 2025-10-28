@@ -571,7 +571,12 @@ func (ps *Parser) prepArticle(articleContent *html.Node) {
 
 	ps.forEachNode(dom.Children(articleContent), func(topCandidate *html.Node, _ int) {
 		ps.cleanMatchedNodes(topCandidate, func(node *html.Node, nodeClassID string) bool {
-			return rxShareElements.MatchString(nodeClassID) && charCount(dom.TextContent(node)) < shareElementThreshold
+			textLength := charCount(dom.TextContent(node))
+			if rxShareElements.MatchString(nodeClassID) && textLength < shareElementThreshold {
+				ps.Logger.Debug("removing share element", slog.Int("chars", textLength), slog.Any("node", inspectNode(node)))
+				return true
+			}
+			return false
 		})
 	})
 
@@ -1152,6 +1157,8 @@ func (ps *Parser) grabArticle() *html.Node {
 		topCandidateScore := ps.getContentScore(topCandidate)
 		topCandidateClassName := dom.ClassName(topCandidate)
 
+		passLogger.Info("determined the content container", slog.Float64("score", topCandidateScore), slog.Any("node", inspectNode(topCandidate)))
+
 		parentOfTopCandidate = topCandidate.Parent
 		siblings := dom.Children(parentOfTopCandidate)
 		for s := 0; s < len(siblings); s++ {
@@ -1169,6 +1176,7 @@ func (ps *Parser) grabArticle() *html.Node {
 				}
 
 				if ps.hasContentScore(sibling) && ps.getContentScore(sibling)+contentBonus >= siblingScoreThreshold {
+					ps.Logger.Debug("keeping sibling to content container due to content score", slog.Any("node", inspectNode(sibling)))
 					appendNode = true
 				} else if dom.TagName(sibling) == "p" {
 					linkDensity := ps.getLinkDensity(sibling)
@@ -1177,9 +1185,11 @@ func (ps *Parser) grabArticle() *html.Node {
 					nodeLength := charCount(nodeContent)
 
 					if nodeLength > 80 && linkDensity < 0.25 {
+						ps.Logger.Debug("keeping sibling to content container due to text density", slog.Any("node", inspectNode(sibling)))
 						appendNode = true
 					} else if nodeLength < 80 && nodeLength > 0 && linkDensity == 0 &&
 						rxSentencePeriod.MatchString(nodeContent) {
+						ps.Logger.Debug("keeping sibling to content container due to prose", slog.Any("node", inspectNode(sibling)))
 						appendNode = true
 					}
 				}
@@ -1200,6 +1210,8 @@ func (ps *Parser) grabArticle() *html.Node {
 				// this line is implemented in Readability.js, however
 				// it doesn't seem to be useful for our port.
 				// siblings = dom.Children(parentOfTopCandidate)
+			} else {
+				ps.Logger.Debug("discarding sibling to content container", slog.Any("node", inspectNode(sibling)))
 			}
 		}
 
