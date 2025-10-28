@@ -96,9 +96,8 @@ func (ps *Parser) ParseAndMutate(doc *html.Node, pageURL *nurl.URL) (Article, er
 		// use the article's first paragraph as the excerpt. This is used
 		// for displaying a preview of the article's content.
 		if metadata["excerpt"] == "" {
-			paragraphs := dom.GetElementsByTagName(articleContent, "p")
-			if len(paragraphs) > 0 {
-				metadata["excerpt"] = strings.TrimSpace(render.InnerText(paragraphs[0]))
+			if paragraph := getElementByTagName(articleContent, "p"); paragraph != nil {
+				metadata["excerpt"] = strings.TrimSpace(render.InnerText(paragraph))
 			}
 		}
 
