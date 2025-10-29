@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"codeberg.org/readeck/go-readability/internal/re2go"
+	"codeberg.org/readeck/go-readability/v2/internal/re2go"
 	"github.com/go-shiori/dom"
 	"golang.org/x/net/html"
 )
