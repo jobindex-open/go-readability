@@ -1,7 +1,6 @@
 package readability
 
 import (
-	"io"
 	"math"
 	"strings"
 
@@ -9,17 +8,6 @@ import (
 	"github.com/go-shiori/dom"
 	"golang.org/x/net/html"
 )
-
-// Check checks whether the input is readable without parsing the whole thing.
-func (ps *Parser) Check(input io.Reader) bool {
-	// Parse input
-	doc, err := dom.Parse(input)
-	if err != nil {
-		return false
-	}
-
-	return ps.CheckDocument(doc)
-}
 
 // CheckDocument checks whether the document is readable without parsing the whole thing.
 func (ps *Parser) CheckDocument(doc *html.Node) bool {

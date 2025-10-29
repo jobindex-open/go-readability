@@ -70,13 +70,6 @@ func FromURL(pageURL string, timeout time.Duration, requestModifiers ...RequestW
 	return parser.Parse(resp.Body, parsedURL)
 }
 
-// Check checks whether the input is readable without parsing the whole thing. It's the
-// wrapper for `Parser.Check()` and useful if you only use the default parser.
-func Check(input io.Reader) bool {
-	parser := NewParser()
-	return parser.Check(input)
-}
-
 // CheckDocument checks whether the document is readable without parsing the whole thing.
 // It's the wrapper for `Parser.CheckDocument()` and useful if you only use the default
 // parser.
