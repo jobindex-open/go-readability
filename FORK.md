@@ -49,5 +49,5 @@ The benchmark measures the performance of parsing a very large HTML document (`t
 
 ~~~
 before: BenchmarkParser-8   	      24	  53734276 ns/op	73729978 B/op	  199153 allocs/op
-after : BenchmarkParser-8   	      39	  27474500 ns/op	 7256686 B/op	   84870 allocs/op
+after : BenchmarkParser-8   	      44	  25147170 ns/op	 5211741 B/op	   84818 allocs/op
 ~~~
