@@ -23,7 +23,7 @@ This is a fork of \`github.com/go-shiori/go-readability\` that adds performance 
 
 MARKDOWN
 
-  git log --reverse --format='- %s - mislav/go-readability@%h' --merges upstream/master... | grep -vwF fork.md
+  git log --reverse --format='- %s - readeck/go-readability@%h' --merges upstream/master... | grep -vwF fork.md
 
   cat <<MARKDOWN
 
