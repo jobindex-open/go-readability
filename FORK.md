@@ -25,7 +25,7 @@ This is a fork of `github.com/go-shiori/go-readability` that adds performance op
 - Merge pull request 'Add configurable structured logger' (#4) from slog into main - readeck/go-readability@fb0fbc5
 - Merge pull request 'Improve Article.TextContent rendering' (#5) from inner-text into main - readeck/go-readability@4c1efef
 - Merge pull request 'Optimize searching for single element by tag name' (#6) from get-element into main - readeck/go-readability@0342e4f
-- Merge pull request 'Avoid transforming <br> chains inside <pre> tags' (#7) from br-in-pre into main - readeck/go-readability@1c26ccc
+- Merge pull request 'Avoid transforming \<br> chains inside \<pre> tags' (#7) from br-in-pre into main - readeck/go-readability@1c26ccc
 - Merge pull request 'Simplify removing HTML comment nodes from the DOM' (#8) from cleanup-comment-nodes into main - readeck/go-readability@a8ff770
 - Merge pull request 'Extend linting in CI to all modules in this project' (#9) from linting-fix into main - readeck/go-readability@d7abbe1
 - Merge pull request 'Optimize cleanStyles' (#11) from clean-styles into main - readeck/go-readability@ea7e541
