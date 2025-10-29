@@ -567,12 +567,23 @@ func (ps *Parser) prepArticle(articleContent *html.Node) {
 	// from final top candidates, which means we don't remove the top
 	// candidates even they have "share".
 	shareElementThreshold := ps.CharThresholds
-
-	ps.forEachNode(dom.Children(articleContent), func(topCandidate *html.Node, _ int) {
-		ps.cleanMatchedNodes(topCandidate, func(node *html.Node, nodeClassID string) bool {
-			return rxShareElements.MatchString(nodeClassID) && charCount(dom.TextContent(node)) < shareElementThreshold
-		})
-	})
+	var shareCleaner func(*html.Node)
+	shareCleaner = func(n *html.Node) {
+		child := n.FirstChild
+		for child != nil {
+			next := child.NextSibling
+			if child.Type == html.ElementNode {
+				matchString := dom.GetAttribute(child, "class") + " " + dom.GetAttribute(child, "id")
+				if len(matchString) > 1 && rxShareElements.MatchString(matchString) && charCount(dom.TextContent(child)) < shareElementThreshold {
+					n.RemoveChild(child)
+				} else {
+					shareCleaner(child)
+				}
+			}
+			child = next
+		}
+	}
+	shareCleaner(articleContent)
 
 	ps.clean(articleContent, "iframe")
 	ps.clean(articleContent, "input")
@@ -2312,20 +2323,6 @@ func (ps *Parser) cleanConditionally(element *html.Node, tag string) {
 
 		return false
 	})
-}
-
-// cleanMatchedNodes cleans out elements whose id/class
-// combinations match specific string.
-func (ps *Parser) cleanMatchedNodes(e *html.Node, filter func(*html.Node, string) bool) {
-	endOfSearchMarkerNode := ps.getNextNode(e, true)
-	next := ps.getNextNode(e, false)
-	for next != nil && next != endOfSearchMarkerNode {
-		if filter != nil && filter(next, dom.ClassName(next)+" "+dom.ID(next)) {
-			next = ps.removeAndGetNext(next)
-		} else {
-			next = ps.getNextNode(next, false)
-		}
-	}
 }
 
 // cleanHeaders cleans out spurious headers from an Element.
