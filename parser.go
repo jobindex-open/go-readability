@@ -13,7 +13,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"codeberg.org/readeck/go-readability/v2/internal/re2go"
 	"github.com/go-shiori/dom"
@@ -75,23 +74,6 @@ type flags struct {
 type parseAttempt struct {
 	articleContent *html.Node
 	textLength     int
-}
-
-// Article is the final readable content.
-type Article struct {
-	Title         string
-	Byline        string
-	Node          *html.Node
-	Content       string
-	TextContent   string
-	Length        int
-	Excerpt       string
-	SiteName      string
-	Image         string
-	Favicon       string
-	Language      string
-	PublishedTime *time.Time
-	ModifiedTime  *time.Time
 }
 
 // Parser is the parser that parses the page to get the readable content.

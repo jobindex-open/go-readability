@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -241,11 +242,11 @@ func getContent(srcPath string, metadataOnly, textOnly bool) (string, error) {
 	// Return the article (or its metadata)
 	if metadataOnly {
 		metadata := map[string]interface{}{
-			"title":   article.Title,
-			"byline":  article.Byline,
-			"excerpt": article.Excerpt,
-			"image":   article.Image,
-			"favicon": article.Favicon,
+			"title":   article.Title(),
+			"byline":  article.Byline(),
+			"excerpt": article.Excerpt(),
+			"image":   article.ImageURL(),
+			"favicon": article.Favicon(),
 		}
 
 		prettyJSON, err := json.MarshalIndent(&metadata, "", "    ")
@@ -257,10 +258,14 @@ func getContent(srcPath string, metadataOnly, textOnly bool) (string, error) {
 	}
 
 	if textOnly {
-		return article.TextContent, nil
+		var textContent bytes.Buffer
+		err := article.RenderText(&textContent)
+		return textContent.String(), err
 	}
 
-	return article.Content, nil
+	var htmlContent bytes.Buffer
+	err = article.RenderHTML(&htmlContent)
+	return htmlContent.String(), err
 }
 
 func validateURL(path string) (*nurl.URL, bool) {

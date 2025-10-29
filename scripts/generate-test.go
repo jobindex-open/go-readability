@@ -192,19 +192,19 @@ func renderMetadataToFile(original *html.Node, article readability.Article, file
 		PublishedTime string `json:"publishedTime,omitempty"`
 		ModifiedTime  string `json:"modifiedTime,omitempty"`
 	}{
-		Title:      article.Title,
-		Byline:     article.Byline,
-		Excerpt:    article.Excerpt,
-		Language:   article.Language,
-		SiteName:   article.SiteName,
+		Title:      article.Title(),
+		Byline:     article.Byline(),
+		Excerpt:    article.Excerpt(),
+		Language:   article.Language(),
+		SiteName:   article.SiteName(),
 		Readerable: readability.CheckDocument(original),
 	}
 
-	if article.PublishedTime != nil {
-		metadata.PublishedTime = article.PublishedTime.Format(time.RFC3339Nano)
+	if pubTime, _ := article.PublishedTime(); !pubTime.IsZero() {
+		metadata.PublishedTime = pubTime.Format(time.RFC3339Nano)
 	}
-	if article.ModifiedTime != nil {
-		metadata.ModifiedTime = article.ModifiedTime.Format(time.RFC3339Nano)
+	if modTime, _ := article.ModifiedTime(); !modTime.IsZero() {
+		metadata.ModifiedTime = modTime.Format(time.RFC3339Nano)
 	}
 
 	bt, err := json.MarshalIndent(&metadata, "", "    ")

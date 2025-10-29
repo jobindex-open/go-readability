@@ -6,11 +6,7 @@ import (
 	"log"
 	"log/slog"
 	nurl "net/url"
-	"strings"
-	"time"
 
-	"codeberg.org/readeck/go-readability/render"
-	"github.com/araddon/dateparse"
 	"github.com/go-shiori/dom"
 	"golang.org/x/net/html"
 )
@@ -84,84 +80,26 @@ func (ps *Parser) ParseAndMutate(doc *html.Node, pageURL *nurl.URL) (Article, er
 	ps.articleByline = metadata["byline"]
 
 	// Try to grab article content
-	finalHTMLContent := ""
-	finalTextContent := ""
 	articleContent := ps.grabArticle()
 	var readableNode *html.Node
 
 	if articleContent != nil {
 		ps.postProcessContent(articleContent)
-
-		// If we haven't found an excerpt in the article's metadata,
-		// use the article's first paragraph as the excerpt. This is used
-		// for displaying a preview of the article's content.
-		if metadata["excerpt"] == "" {
-			if paragraph := getElementByTagName(articleContent, "p"); paragraph != nil {
-				metadata["excerpt"] = strings.TrimSpace(render.InnerText(paragraph))
-			}
-		}
-
 		readableNode = dom.FirstElementChild(articleContent)
-		finalHTMLContent = dom.InnerHTML(articleContent)
-		finalTextContent = render.InnerText(articleContent)
-		finalTextContent = strings.TrimSpace(finalTextContent)
 	}
-
-	// Excerpt is an supposed to be short and concise,
-	// so it shouldn't have any new line
-	excerpt := strings.TrimSpace(metadata["excerpt"])
-	excerpt = strings.Join(strings.Fields(excerpt), " ")
-
-	// go-readability special:
-	// Internet is dangerous and weird, and sometimes we will find
-	// metadata isn't encoded using a valid Utf-8, so here we check it.
-	var replacementTitle string
-	if pageURL != nil {
-		replacementTitle = pageURL.String()
-	}
-
-	validTitle := strings.ToValidUTF8(ps.articleTitle, replacementTitle)
-	validByline := strings.ToValidUTF8(ps.articleByline, "")
-	validExcerpt := strings.ToValidUTF8(excerpt, "")
-
-	publishedTime := ps.getDate(metadata, "publishedTime")
-	modifiedTime := ps.getDate(metadata, "modifiedTime")
 
 	return Article{
-		Title:         validTitle,
-		Byline:        validByline,
+		title:         ps.articleTitle,
+		byline:        ps.articleByline,
 		Node:          readableNode,
-		Content:       finalHTMLContent,
-		TextContent:   finalTextContent,
-		Length:        charCount(finalTextContent),
-		Excerpt:       validExcerpt,
-		SiteName:      metadata["siteName"],
-		Image:         metadata["image"],
-		Favicon:       metadata["favicon"],
-		Language:      ps.articleLang,
-		PublishedTime: publishedTime,
-		ModifiedTime:  modifiedTime,
+		excerpt:       metadata["excerpt"],
+		siteName:      metadata["siteName"],
+		image:         metadata["image"],
+		favicon:       metadata["favicon"],
+		language:      ps.articleLang,
+		publishedTime: metadata["publishedTime"],
+		modifiedTime:  metadata["modifiedTime"],
 	}, nil
-}
-
-// getDate tries to get a date from metadata, and parse it using a list of known formats.
-func (ps *Parser) getDate(metadata map[string]string, fieldName string) *time.Time {
-	dateStr, ok := metadata[fieldName]
-	if !ok || len(dateStr) == 0 {
-		return nil
-	}
-	d, err := dateparse.ParseAny(dateStr)
-	if err != nil {
-		ps.Logger.Warn("failed to parse timestamp",
-			slog.Group("metadata",
-				slog.String("field", fieldName),
-				slog.String("value", dateStr),
-			),
-			slog.Any("err", err),
-		)
-		return nil
-	}
-	return &d
 }
 
 func newLegacyLogger(w io.Writer) *slog.Logger {

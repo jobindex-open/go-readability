@@ -77,36 +77,44 @@ func Test_parser(t *testing.T) {
 			}
 
 			// Check metadata
-			if metadata.Byline != article.Byline {
-				t1.Errorf("byline, want %q got %q\n", metadata.Byline, article.Byline)
+			if gotByline := article.Byline(); metadata.Byline != gotByline {
+				t1.Errorf("byline, want %q got %q\n", metadata.Byline, gotByline)
 			}
 
-			if metadata.Excerpt != article.Excerpt {
-				t1.Errorf("excerpt, want %q got %q\n", metadata.Excerpt, article.Excerpt)
+			if gotExcerpt := article.Excerpt(); metadata.Excerpt != gotExcerpt {
+				t1.Errorf("excerpt, want %q got %q\n", metadata.Excerpt, gotExcerpt)
 			}
 
-			if metadata.SiteName != article.SiteName {
-				t1.Errorf("sitename, want %q got %q\n", metadata.SiteName, article.SiteName)
+			if gotSiteName := article.SiteName(); metadata.SiteName != gotSiteName {
+				t1.Errorf("sitename, want %q got %q\n", metadata.SiteName, gotSiteName)
 			}
 
-			if metadata.Title != article.Title {
-				t1.Errorf("title, want %q got %q\n", metadata.Title, article.Title)
+			if gotTitle := article.Title(); metadata.Title != gotTitle {
+				t1.Errorf("title, want %q got %q\n", metadata.Title, gotTitle)
 			}
 
 			if metadata.Readerable != isReaderable {
 				t1.Errorf("readerable, want %v got %v\n", metadata.Readerable, isReaderable)
 			}
 
-			if metadata.Language != article.Language {
-				t1.Errorf("language, want %q got %q\n", metadata.Language, article.Language)
+			if gotLanguage := article.Language(); metadata.Language != gotLanguage {
+				t1.Errorf("language, want %q got %q\n", metadata.Language, gotLanguage)
 			}
 
-			if !timesAreEqual(t1, metadata.PublishedTime, article.PublishedTime) {
-				t1.Errorf("date published, want %q got %q\n", metadata.PublishedTime, article.PublishedTime)
+			if pubTime, err := article.PublishedTime(); !timesAreEqual(t1, metadata.PublishedTime, pubTime) {
+				if err == nil {
+					t1.Errorf("date published, want %q got %q\n", metadata.PublishedTime, pubTime)
+				} else {
+					t1.Errorf("date published, want %q got error: %v\n", metadata.PublishedTime, err)
+				}
 			}
 
-			if !timesAreEqual(t1, metadata.ModifiedTime, article.ModifiedTime) {
-				t1.Errorf("date modified, want %q got %q\n", metadata.ModifiedTime, article.ModifiedTime)
+			if modTime, err := article.ModifiedTime(); !timesAreEqual(t1, metadata.ModifiedTime, modTime) {
+				if err == nil {
+					t1.Errorf("date modified, want %q got %q\n", metadata.ModifiedTime, modTime)
+				} else {
+					t1.Errorf("date modified, want %q got error: %v\n", metadata.ModifiedTime, err)
+				}
 			}
 
 		})
@@ -190,11 +198,16 @@ func extractSourceFile(path string) (Article, bool, *html.Node, error) {
 		return Article{}, false, nil, fmt.Errorf("failed to extract source: %v", err)
 	}
 
+	var htmlContent bytes.Buffer
+	if err := article.RenderHTML(&htmlContent); err != nil {
+		return Article{}, false, nil, fmt.Errorf("failed to render HTML: %v", err)
+	}
+
 	// At this point, we have article.Node which we could potentially return as extractedDoc to
 	// compare with the DOM in "expected.html", but there could potentially be differences due to
 	// how some HTML nodes might get dropped during "expected.html" parsing. The safest way to
 	// compensate for that is to re-parse the HTML representation of the readable DOM.
-	extractedDoc, err := dom.Parse(strings.NewReader(article.Content))
+	extractedDoc, err := dom.Parse(&htmlContent)
 	if err != nil {
 		return Article{}, false, nil, fmt.Errorf("failed to parse extract to HTML: %v", err)
 	}
@@ -383,12 +396,12 @@ func getNodeExcerpt(node *html.Node) string {
 	return outer[:120]
 }
 
-func timesAreEqual(t *testing.T, metadataTimeString string, parsedTime *time.Time) bool {
-	if metadataTimeString == "" && parsedTime == nil {
+func timesAreEqual(t *testing.T, metadataTimeString string, parsedTime time.Time) bool {
+	if metadataTimeString == "" && parsedTime.IsZero() {
 		return true
 	}
 
-	if metadataTimeString == "" || parsedTime == nil {
+	if metadataTimeString == "" || parsedTime.IsZero() {
 		return false
 	}
 
@@ -396,5 +409,5 @@ func timesAreEqual(t *testing.T, metadataTimeString string, parsedTime *time.Tim
 	if err != nil {
 		t.Logf("error parsing %q: %v", metadataTimeString, err)
 	}
-	return err == nil && metadataTime.Equal(*parsedTime)
+	return err == nil && metadataTime.Equal(parsedTime)
 }
