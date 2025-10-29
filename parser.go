@@ -575,6 +575,7 @@ func (ps *Parser) prepArticle(articleContent *html.Node) {
 			if child.Type == html.ElementNode {
 				matchString := dom.GetAttribute(child, "class") + " " + dom.GetAttribute(child, "id")
 				if len(matchString) > 1 && rxShareElements.MatchString(matchString) && charCount(dom.TextContent(child)) < shareElementThreshold {
+					ps.Logger.Debug("removing share element", slog.Any("node", inspectNode(child)))
 					n.RemoveChild(child)
 				} else {
 					shareCleaner(child)
@@ -1164,6 +1165,12 @@ func (ps *Parser) grabArticle() *html.Node {
 		topCandidateScore := ps.getContentScore(topCandidate)
 		topCandidateClassName := dom.ClassName(topCandidate)
 
+		passLogger.Info("determined the content container",
+			slog.Float64("score", topCandidateScore),
+			slog.Any("node", inspectNode(topCandidate)),
+			slog.Any("xpath", inspectXPath(topCandidate)),
+		)
+
 		parentOfTopCandidate = topCandidate.Parent
 		siblings := dom.Children(parentOfTopCandidate)
 		for s := 0; s < len(siblings); s++ {
@@ -1181,6 +1188,7 @@ func (ps *Parser) grabArticle() *html.Node {
 				}
 
 				if ps.hasContentScore(sibling) && ps.getContentScore(sibling)+contentBonus >= siblingScoreThreshold {
+					ps.Logger.Debug("keeping sibling to content container due to content score", slog.Any("node", inspectNode(sibling)))
 					appendNode = true
 				} else if dom.TagName(sibling) == "p" {
 					linkDensity := ps.getLinkDensity(sibling)
@@ -1189,9 +1197,11 @@ func (ps *Parser) grabArticle() *html.Node {
 					nodeLength := charCount(nodeContent)
 
 					if nodeLength > 80 && linkDensity < 0.25 {
+						ps.Logger.Debug("keeping sibling to content container due to text density", slog.Any("node", inspectNode(sibling)))
 						appendNode = true
 					} else if nodeLength < 80 && nodeLength > 0 && linkDensity == 0 &&
 						rxSentencePeriod.MatchString(nodeContent) {
+						ps.Logger.Debug("keeping sibling to content container due to prose", slog.Any("node", inspectNode(sibling)))
 						appendNode = true
 					}
 				}
@@ -1212,6 +1222,8 @@ func (ps *Parser) grabArticle() *html.Node {
 				// this line is implemented in Readability.js, however
 				// it doesn't seem to be useful for our port.
 				// siblings = dom.Children(parentOfTopCandidate)
+			} else {
+				ps.Logger.Debug("discarding sibling to content container", slog.Any("node", inspectNode(sibling)))
 			}
 		}
 
@@ -2506,56 +2518,6 @@ func getElementByTagName(parent *html.Node, tagName string) *html.Node {
 		return nil
 	}
 	return finder(parent)
-}
-
-// inspectNode wraps a HTML node to use in structured logging
-func inspectNode(node *html.Node) slog.LogValuer {
-	return &inspectedNode{node}
-}
-
-type inspectedNode struct {
-	node *html.Node
-}
-
-func (n *inspectedNode) LogValue() slog.Value {
-	if n.node.Type == html.TextNode {
-		return slog.StringValue(n.node.Data)
-	}
-
-	var tagPreview strings.Builder
-	tagPreview.WriteString("<")
-	tagPreview.WriteString(n.node.Data)
-
-	hasOtherAttributes := false
-	for _, attr := range n.node.Attr {
-		switch strings.ToLower(attr.Key) {
-		case "id", "class", "rel", "itemprop", "name", "type", "role", "for":
-			fmt.Fprintf(&tagPreview, ` %s=%q`, attr.Key, attr.Val)
-		case "src", "href":
-			val := attr.Val
-			if strings.HasPrefix(val, "data:") {
-				if v, _, ok := strings.Cut(val, ","); ok {
-					val = v + ",***"
-				}
-			} else if strings.HasPrefix(val, "javascript:") {
-				val = "javascript:***"
-			}
-			fmt.Fprintf(&tagPreview, ` %s=%q`, attr.Key, val)
-		default:
-			if !strings.HasPrefix(attr.Key, "data-readability-") {
-				hasOtherAttributes = true
-			}
-		}
-	}
-	if hasOtherAttributes {
-		tagPreview.WriteString(" ...")
-	}
-
-	if n.node.FirstChild == nil {
-		tagPreview.WriteString("/")
-	}
-	tagPreview.WriteString(">")
-	return slog.StringValue(tagPreview.String())
 }
 
 // UNUSED CODES
