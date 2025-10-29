@@ -3,8 +3,6 @@ package readability
 import (
 	"fmt"
 	"io"
-	"log"
-	"log/slog"
 	nurl "net/url"
 
 	"github.com/go-shiori/dom"
@@ -30,11 +28,6 @@ func (ps *Parser) ParseDocument(doc *html.Node, pageURL *nurl.URL) (Article, err
 
 // ParseAndMutate is like ParseDocument, but mutates doc during parsing.
 func (ps *Parser) ParseAndMutate(doc *html.Node, pageURL *nurl.URL) (Article, error) {
-	// Backward compatibility with old logging approach.
-	if ps.Debug {
-		ps.Logger = newLegacyLogger(log.Default().Writer())
-	}
-
 	ps.doc = doc
 
 	// Reset parser data
@@ -100,22 +93,4 @@ func (ps *Parser) ParseAndMutate(doc *html.Node, pageURL *nurl.URL) (Article, er
 		publishedTime: metadata["publishedTime"],
 		modifiedTime:  metadata["modifiedTime"],
 	}, nil
-}
-
-func newLegacyLogger(w io.Writer) *slog.Logger {
-	return slog.New(slog.NewTextHandler(
-		w,
-		&slog.HandlerOptions{
-			Level: slog.LevelDebug,
-			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-				if a.Key == "time" {
-					return slog.Attr{}
-				}
-				if a.Value.Kind() == slog.KindFloat64 {
-					return slog.String(a.Key, fmt.Sprintf("%.2f", a.Value.Float64()))
-				}
-				return a
-			},
-		},
-	))
 }

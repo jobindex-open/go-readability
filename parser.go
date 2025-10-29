@@ -93,8 +93,6 @@ type Parser struct {
 	KeepClasses bool
 	// TagsToScore is element tags to score by default.
 	TagsToScore []string
-	// Deprecated: opt into printing logs to stderr. Use Logger instead.
-	Debug bool
 	// The structured logger to write to. The default log is written to io.Discard.
 	Logger *slog.Logger
 	// DisableJSONLD determines if metadata in JSON+LD will be extracted
@@ -124,7 +122,6 @@ func NewParser() Parser {
 		ClassesToPreserve: []string{"page"},
 		KeepClasses:       false,
 		TagsToScore:       []string{"section", "h2", "h3", "h4", "h5", "h6", "p", "td", "pre"},
-		Debug:             false,
 		// TODO: switch to slog.DiscardHandler with go 1.24
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
