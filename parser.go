@@ -799,8 +799,6 @@ func (ps *Parser) grabArticle() *html.Node {
 
 	grabLoop:
 		for node != nil {
-			passLogger := passLogger.With(slog.Any("node", inspectNode(node)))
-
 			matchString := dom.ClassName(node) + " " + dom.ID(node)
 
 			if dom.TagName(node) == "html" {
@@ -808,7 +806,7 @@ func (ps *Parser) grabArticle() *html.Node {
 			}
 
 			if !ps.isProbablyVisible(node) {
-				passLogger.Debug("removing hidden element")
+				passLogger.Debug("removing hidden element", slog.Any("node", inspectNode(node)))
 				node = ps.removeAndGetNext(node)
 				continue
 			}
@@ -817,7 +815,7 @@ func (ps *Parser) grabArticle() *html.Node {
 			// and "role = dialog"
 			if dom.GetAttribute(node, "aria-modal") == "true" &&
 				dom.GetAttribute(node, "role") == "dialog" {
-				passLogger.Debug("removing modal dialog")
+				passLogger.Debug("removing modal dialog", slog.Any("node", inspectNode(node)))
 				node = ps.removeAndGetNext(node)
 				continue
 			}
@@ -832,7 +830,7 @@ func (ps *Parser) grabArticle() *html.Node {
 					itemprop := dom.GetAttribute(next, "itemprop")
 					if strings.Contains(itemprop, "name") {
 						ps.articleByline = ps.getInnerText(next, false)
-						passLogger.Debug("removing byline")
+						passLogger.Debug("removing byline", slog.Any("node", inspectNode(node)))
 						node = ps.removeAndGetNext(node)
 						continue grabLoop
 					}
@@ -844,7 +842,7 @@ func (ps *Parser) grabArticle() *html.Node {
 				// tests and the bylines end up different.
 				if nChar := charCount(bylineText); nChar > 0 && nChar < 100 {
 					ps.articleByline = normalizeWhitespace(bylineText)
-					passLogger.Debug("removing byline")
+					passLogger.Debug("removing byline", slog.Any("node", inspectNode(node)))
 					node = ps.removeAndGetNext(node)
 					continue
 				}
@@ -852,7 +850,7 @@ func (ps *Parser) grabArticle() *html.Node {
 
 			if shouldRemoveTitleHeader && ps.headerDuplicatesTitle(node) {
 				shouldRemoveTitleHeader = false
-				passLogger.Debug("removing heading that duplicates title", slog.String("title", ps.articleTitle))
+				passLogger.Debug("removing heading that duplicates title", slog.String("title", ps.articleTitle), slog.Any("node", inspectNode(node)))
 				node = ps.removeAndGetNext(node)
 				continue
 			}
@@ -860,19 +858,19 @@ func (ps *Parser) grabArticle() *html.Node {
 			// Remove unlikely candidates
 			nodeTagName := dom.TagName(node)
 			if ps.flags.stripUnlikelys {
-				if re2go.IsUnlikelyCandidates(matchString) &&
+				if nodeTagName != "body" && nodeTagName != "a" &&
+					re2go.IsUnlikelyCandidates(matchString) &&
 					!re2go.MaybeItsACandidate(matchString) &&
 					!ps.hasAncestorTag(node, "table", 3, nil) &&
-					!ps.hasAncestorTag(node, "code", 3, nil) &&
-					nodeTagName != "body" && nodeTagName != "a" {
-					passLogger.Debug("removing unlikely candidate")
+					!ps.hasAncestorTag(node, "code", 3, nil) {
+					passLogger.Debug("removing unlikely candidate", slog.Any("node", inspectNode(node)))
 					node = ps.removeAndGetNext(node)
 					continue
 				}
 
 				role := dom.GetAttribute(node, "role")
 				if _, include := unlikelyRoles[role]; include {
-					passLogger.Debug("removing content due to role")
+					passLogger.Debug("removing content due to role", slog.Any("node", inspectNode(node)))
 					node = ps.removeAndGetNext(node)
 					continue
 				}
@@ -884,7 +882,7 @@ func (ps *Parser) grabArticle() *html.Node {
 			case "div", "section", "header",
 				"h1", "h2", "h3", "h4", "h5", "h6":
 				if ps.isElementWithoutContent(node) {
-					passLogger.Debug("removing element with no content")
+					passLogger.Debug("removing element with no content", slog.Any("node", inspectNode(node)))
 					node = ps.removeAndGetNext(node)
 					continue
 				}
