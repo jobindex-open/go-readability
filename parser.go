@@ -9,6 +9,7 @@ import (
 	"math"
 	nurl "net/url"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -228,22 +229,24 @@ func (ps *Parser) getAllNodesWithTag(node *html.Node, tagNames ...string) []*htm
 // given subtree, except those that match CLASSES_TO_PRESERVE and the
 // classesToPreserve array from the options object.
 func (ps *Parser) cleanClasses(node *html.Node) {
-	nodeClassName := dom.ClassName(node)
-	preservedClassName := []string{}
-	for _, class := range strings.Fields(nodeClassName) {
-		if indexOf(ps.ClassesToPreserve, class) != -1 {
-			preservedClassName = append(preservedClassName, class)
+	for i := 0; i < len(node.Attr); i++ {
+		if node.Attr[i].Key == "class" {
+			preservedClassName := slices.DeleteFunc(strings.Fields(node.Attr[i].Val), func(name string) bool {
+				return !slices.Contains(ps.ClassesToPreserve, name)
+			})
+			if len(preservedClassName) > 0 {
+				node.Attr[i].Val = strings.Join(preservedClassName, " ")
+			} else {
+				node.Attr = append(node.Attr[:i], node.Attr[i+1:]...)
+			}
+			break
 		}
 	}
 
-	if len(preservedClassName) > 0 {
-		dom.SetAttribute(node, "class", strings.Join(preservedClassName, " "))
-	} else {
-		dom.RemoveAttribute(node, "class")
-	}
-
-	for child := dom.FirstElementChild(node); child != nil; child = dom.NextElementSibling(child) {
-		ps.cleanClasses(child)
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		if child.Type == html.ElementNode {
+			ps.cleanClasses(child)
+		}
 	}
 }
 
@@ -564,12 +567,23 @@ func (ps *Parser) prepArticle(articleContent *html.Node) {
 	// from final top candidates, which means we don't remove the top
 	// candidates even they have "share".
 	shareElementThreshold := ps.CharThresholds
-
-	ps.forEachNode(dom.Children(articleContent), func(topCandidate *html.Node, _ int) {
-		ps.cleanMatchedNodes(topCandidate, func(node *html.Node, nodeClassID string) bool {
-			return rxShareElements.MatchString(nodeClassID) && charCount(dom.TextContent(node)) < shareElementThreshold
-		})
-	})
+	var shareCleaner func(*html.Node)
+	shareCleaner = func(n *html.Node) {
+		child := n.FirstChild
+		for child != nil {
+			next := child.NextSibling
+			if child.Type == html.ElementNode {
+				matchString := dom.GetAttribute(child, "class") + " " + dom.GetAttribute(child, "id")
+				if len(matchString) > 1 && rxShareElements.MatchString(matchString) && charCount(dom.TextContent(child)) < shareElementThreshold {
+					n.RemoveChild(child)
+				} else {
+					shareCleaner(child)
+				}
+			}
+			child = next
+		}
+	}
+	shareCleaner(articleContent)
 
 	ps.clean(articleContent, "iframe")
 	ps.clean(articleContent, "input")
@@ -1804,7 +1818,7 @@ func (ps *Parser) getLinkDensity(element *html.Node) float64 {
 			}()
 			linkCounter = cc
 		}
-		for child := range n.ChildNodes() {
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
 			walk(child, linkCounter)
 		}
 	}
@@ -2309,20 +2323,6 @@ func (ps *Parser) cleanConditionally(element *html.Node, tag string) {
 
 		return false
 	})
-}
-
-// cleanMatchedNodes cleans out elements whose id/class
-// combinations match specific string.
-func (ps *Parser) cleanMatchedNodes(e *html.Node, filter func(*html.Node, string) bool) {
-	endOfSearchMarkerNode := ps.getNextNode(e, true)
-	next := ps.getNextNode(e, false)
-	for next != nil && next != endOfSearchMarkerNode {
-		if filter != nil && filter(next, dom.ClassName(next)+" "+dom.ID(next)) {
-			next = ps.removeAndGetNext(next)
-		} else {
-			next = ps.getNextNode(next, false)
-		}
-	}
 }
 
 // cleanHeaders cleans out spurious headers from an Element.

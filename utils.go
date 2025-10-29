@@ -81,6 +81,16 @@ func toAbsoluteURI(uri string, base *nurl.URL) string {
 		return uri
 	}
 
+	// If it is a protocol-relative URI, fill in the scheme
+	if strings.HasPrefix(uri, "//") {
+		return base.Scheme + ":" + uri
+	}
+
+	// If it is an absolute HTTP(S) URI, return as it is
+	if strings.HasPrefix(uri, "https://") || strings.HasPrefix(uri, "http://") {
+		return uri
+	}
+
 	// If it is already an absolute URL, return as it is
 	tmp, err := nurl.ParseRequestURI(uri)
 	if err == nil && tmp.Scheme != "" && tmp.Hostname() != "" {
