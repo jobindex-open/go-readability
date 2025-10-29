@@ -9,6 +9,7 @@ import (
 	"math"
 	nurl "net/url"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -228,22 +229,24 @@ func (ps *Parser) getAllNodesWithTag(node *html.Node, tagNames ...string) []*htm
 // given subtree, except those that match CLASSES_TO_PRESERVE and the
 // classesToPreserve array from the options object.
 func (ps *Parser) cleanClasses(node *html.Node) {
-	nodeClassName := dom.ClassName(node)
-	preservedClassName := []string{}
-	for _, class := range strings.Fields(nodeClassName) {
-		if indexOf(ps.ClassesToPreserve, class) != -1 {
-			preservedClassName = append(preservedClassName, class)
+	for i := 0; i < len(node.Attr); i++ {
+		if node.Attr[i].Key == "class" {
+			preservedClassName := slices.DeleteFunc(strings.Fields(node.Attr[i].Val), func(name string) bool {
+				return !slices.Contains(ps.ClassesToPreserve, name)
+			})
+			if len(preservedClassName) > 0 {
+				node.Attr[i].Val = strings.Join(preservedClassName, " ")
+			} else {
+				node.Attr = append(node.Attr[:i], node.Attr[i+1:]...)
+			}
+			break
 		}
 	}
 
-	if len(preservedClassName) > 0 {
-		dom.SetAttribute(node, "class", strings.Join(preservedClassName, " "))
-	} else {
-		dom.RemoveAttribute(node, "class")
-	}
-
-	for child := dom.FirstElementChild(node); child != nil; child = dom.NextElementSibling(child) {
-		ps.cleanClasses(child)
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		if child.Type == html.ElementNode {
+			ps.cleanClasses(child)
+		}
 	}
 }
 
@@ -1804,7 +1807,7 @@ func (ps *Parser) getLinkDensity(element *html.Node) float64 {
 			}()
 			linkCounter = cc
 		}
-		for child := range n.ChildNodes() {
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
 			walk(child, linkCounter)
 		}
 	}
