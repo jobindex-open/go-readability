@@ -9,6 +9,7 @@ import (
 	"math"
 	nurl "net/url"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -52,12 +53,10 @@ var (
 
 // Constants that used by readability.
 var (
-	unlikelyRoles                = sliceToMap("menu", "menubar", "complementary", "navigation", "alert", "alertdialog", "dialog")
-	divToPElems                  = sliceToMap("blockquote", "dl", "div", "img", "ol", "p", "pre", "table", "ul", "select")
-	alterToDivExceptions         = []string{"div", "article", "section", "p", "ol", "ul"}
-	presentationalAttributes     = []string{"align", "background", "bgcolor", "border", "cellpadding", "cellspacing", "frame", "hspace", "rules", "style", "valign", "vspace"}
-	deprecatedSizeAttributeElems = []string{"table", "th", "td", "hr", "pre"}
-	phrasingElems                = []string{
+	unlikelyRoles        = sliceToMap("menu", "menubar", "complementary", "navigation", "alert", "alertdialog", "dialog")
+	divToPElems          = sliceToMap("blockquote", "dl", "div", "img", "ol", "p", "pre", "table", "ul", "select")
+	alterToDivExceptions = []string{"div", "article", "section", "p", "ol", "ul"}
+	phrasingElems        = []string{
 		"abbr", "audio", "b", "bdo", "br", "button", "cite", "code", "data",
 		"datalist", "dfn", "em", "embed", "i", "img", "input", "kbd", "label",
 		"mark", "math", "meter", "noscript", "object", "output", "progress", "q",
@@ -230,22 +229,24 @@ func (ps *Parser) getAllNodesWithTag(node *html.Node, tagNames ...string) []*htm
 // given subtree, except those that match CLASSES_TO_PRESERVE and the
 // classesToPreserve array from the options object.
 func (ps *Parser) cleanClasses(node *html.Node) {
-	nodeClassName := dom.ClassName(node)
-	preservedClassName := []string{}
-	for _, class := range strings.Fields(nodeClassName) {
-		if indexOf(ps.ClassesToPreserve, class) != -1 {
-			preservedClassName = append(preservedClassName, class)
+	for i := 0; i < len(node.Attr); i++ {
+		if node.Attr[i].Key == "class" {
+			preservedClassName := slices.DeleteFunc(strings.Fields(node.Attr[i].Val), func(name string) bool {
+				return !slices.Contains(ps.ClassesToPreserve, name)
+			})
+			if len(preservedClassName) > 0 {
+				node.Attr[i].Val = strings.Join(preservedClassName, " ")
+			} else {
+				node.Attr = append(node.Attr[:i], node.Attr[i+1:]...)
+			}
+			break
 		}
 	}
 
-	if len(preservedClassName) > 0 {
-		dom.SetAttribute(node, "class", strings.Join(preservedClassName, " "))
-	} else {
-		dom.RemoveAttribute(node, "class")
-	}
-
-	for child := dom.FirstElementChild(node); child != nil; child = dom.NextElementSibling(child) {
-		ps.cleanClasses(child)
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		if child.Type == html.ElementNode {
+			ps.cleanClasses(child)
+		}
 	}
 }
 
@@ -545,8 +546,6 @@ func (ps *Parser) setNodeTag(node *html.Node, newTagName string) {
 // prepArticle prepares the article node for display. Clean out any
 // inline styles, iframes, forms, strip extraneous <p> tags, etc.
 func (ps *Parser) prepArticle(articleContent *html.Node) {
-	ps.cleanStyles(articleContent)
-
 	// Check for data tables before we continue, to avoid removing
 	// items in those tables, which will often be isolated even
 	// though they're visually linked to other content-ful elements
@@ -568,17 +567,24 @@ func (ps *Parser) prepArticle(articleContent *html.Node) {
 	// from final top candidates, which means we don't remove the top
 	// candidates even they have "share".
 	shareElementThreshold := ps.CharThresholds
-
-	ps.forEachNode(dom.Children(articleContent), func(topCandidate *html.Node, _ int) {
-		ps.cleanMatchedNodes(topCandidate, func(node *html.Node, nodeClassID string) bool {
-			textLength := charCount(dom.TextContent(node))
-			if rxShareElements.MatchString(nodeClassID) && textLength < shareElementThreshold {
-				ps.Logger.Debug("removing share element", slog.Int("chars", textLength), slog.Any("node", inspectNode(node)))
-				return true
+	var shareCleaner func(*html.Node)
+	shareCleaner = func(n *html.Node) {
+		child := n.FirstChild
+		for child != nil {
+			next := child.NextSibling
+			if child.Type == html.ElementNode {
+				matchString := dom.GetAttribute(child, "class") + " " + dom.GetAttribute(child, "id")
+				if len(matchString) > 1 && rxShareElements.MatchString(matchString) && charCount(dom.TextContent(child)) < shareElementThreshold {
+					ps.Logger.Debug("removing share element", slog.Any("node", inspectNode(child)))
+					n.RemoveChild(child)
+				} else {
+					shareCleaner(child)
+				}
 			}
-			return false
-		})
-	})
+			child = next
+		}
+	}
+	shareCleaner(articleContent)
 
 	ps.clean(articleContent, "iframe")
 	ps.clean(articleContent, "input")
@@ -631,6 +637,8 @@ func (ps *Parser) prepArticle(articleContent *html.Node) {
 			br.Parent.RemoveChild(br)
 		}
 	})
+
+	ps.cleanStyles(articleContent)
 
 	// Remove single-cell tables
 	ps.forEachNode(dom.GetElementsByTagName(articleContent, "table"), func(table *html.Node, _ int) {
@@ -1767,23 +1775,32 @@ func (ps *Parser) getInnerText(node *html.Node, normalizeSpaces bool) string {
 
 // cleanStyles removes the style attribute on every node and under.
 func (ps *Parser) cleanStyles(node *html.Node) {
-	nodeTagName := dom.TagName(node)
-	if node == nil || nodeTagName == "svg" {
+	isDeprecatedSizeAttributeElems := false
+	switch node.Data {
+	case "svg":
 		return
+	// deprecatedSizeAttributeElems
+	case "table", "th", "td", "hr", "pre":
+		isDeprecatedSizeAttributeElems = true
 	}
 
-	// Remove `style` and deprecated presentational attributes
-	for i := 0; i < len(presentationalAttributes); i++ {
-		dom.RemoveAttribute(node, presentationalAttributes[i])
+	for i := len(node.Attr) - 1; i >= 0; i-- {
+		switch node.Attr[i].Key {
+		case "width", "height":
+			if !isDeprecatedSizeAttributeElems {
+				continue
+			}
+			fallthrough
+		// presentationalAttributes
+		case "align", "background", "bgcolor", "border", "cellpadding", "cellspacing", "frame", "hspace", "rules", "style", "valign", "vspace":
+			node.Attr = append(node.Attr[:i], node.Attr[i+1:]...)
+		}
 	}
 
-	if indexOf(deprecatedSizeAttributeElems, nodeTagName) != -1 {
-		dom.RemoveAttribute(node, "width")
-		dom.RemoveAttribute(node, "height")
-	}
-
-	for child := dom.FirstElementChild(node); child != nil; child = dom.NextElementSibling(child) {
-		ps.cleanStyles(child)
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		if child.Type == html.ElementNode {
+			ps.cleanStyles(child)
+		}
 	}
 }
 
@@ -1813,7 +1830,7 @@ func (ps *Parser) getLinkDensity(element *html.Node) float64 {
 			}()
 			linkCounter = cc
 		}
-		for child := range n.ChildNodes() {
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
 			walk(child, linkCounter)
 		}
 	}
@@ -2318,20 +2335,6 @@ func (ps *Parser) cleanConditionally(element *html.Node, tag string) {
 
 		return false
 	})
-}
-
-// cleanMatchedNodes cleans out elements whose id/class
-// combinations match specific string.
-func (ps *Parser) cleanMatchedNodes(e *html.Node, filter func(*html.Node, string) bool) {
-	endOfSearchMarkerNode := ps.getNextNode(e, true)
-	next := ps.getNextNode(e, false)
-	for next != nil && next != endOfSearchMarkerNode {
-		if filter != nil && filter(next, dom.ClassName(next)+" "+dom.ID(next)) {
-			next = ps.removeAndGetNext(next)
-		} else {
-			next = ps.getNextNode(next, false)
-		}
-	}
 }
 
 // cleanHeaders cleans out spurious headers from an Element.
