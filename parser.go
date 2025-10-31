@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	shtml "html"
-	"io"
 	"log/slog"
 	"math"
 	nurl "net/url"
@@ -143,8 +142,7 @@ func NewParser() Parser {
 		KeepClasses:       false,
 		TagsToScore:       []string{"section", "h2", "h3", "h4", "h5", "h6", "p", "td", "pre"},
 		Debug:             false,
-		// TODO: switch to slog.DiscardHandler with go 1.24
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:            slog.New(slog.DiscardHandler),
 	}
 }
 
