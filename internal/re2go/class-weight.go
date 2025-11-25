@@ -531,17 +531,17 @@ func IsPositiveClass(input string) bool {
 }
 
 // For IsNegativeClass, its original pattern is like this:
-// (?i)-ad-|hidden|^hid$| hid$| hid |^hid |banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|scroll|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget
+// (?i)-ad-|hidden|^hid$| hid$| hid |^hid |banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget
 //
 // Unfortunately, re2go doesn't handle anchor like ^ and $ internally, so for convenience
 // I'll split that pattern into two:
-// - `^hid$| hid$| hid |^hid `
-// - `-ad-|hidden|banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|scroll|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget`
+// - `(^| )(hid|hidden|d-none)( |$)`
+// - `-ad-|banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget`
 func IsNegativeClass(input string) bool {
 	return isNegativeClass1(input) || isNegativeClass2(input)
 }
 
-// This one handle: `^hid$| hid$| hid |^hid `
+// This one handle: `(^| )(hid|hidden|d-none)( |$)`
 func isNegativeClass1(input string) bool {
 	var cursor, marker int
 	input += string(rune(0)) // add terminating null
@@ -549,7 +549,7 @@ func isNegativeClass1(input string) bool {
 	_ = marker
 
 	// Variable for capturing parentheses (twice the number of groups).
-	const YYMAXNMATCH = 3
+	const YYMAXNMATCH = 4
 
 	yypmatch := make([]int, YYMAXNMATCH*2)
 	var yynmatch int
@@ -566,6 +566,10 @@ func isNegativeClass1(input string) bool {
 	_ = yyt4
 	var yyt5 int
 	_ = yyt5
+	var yyt6 int
+	_ = yyt6
+	var yyt7 int
+	_ = yyt7
 
 	for {
 		{
@@ -577,41 +581,54 @@ func isNegativeClass1(input string) bool {
 				fallthrough
 			case 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, '\t':
 				fallthrough
-			case '\v', '\f', '\r', 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, ' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G':
+			case '\v', '\f', '\r', 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, ' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C':
 				fallthrough
-			case 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g':
+			case 'E', 'F', 'G':
+				fallthrough
+			case 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c':
+				fallthrough
+			case 'e', 'f', 'g':
 				fallthrough
 			case 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', 0x7F:
 				if limit <= cursor {
-					goto yy71
+					goto yy80
 				}
 				yyt1 = cursor
 				goto yy46
+			case 'D':
+				fallthrough
+			case 'd':
+				yyt1 = cursor
+				yyt2 = -1
+				yyt6 = -1
+				yyt7 = cursor
+				goto yy49
 			case 'H':
 				fallthrough
 			case 'h':
 				yyt1 = cursor
 				yyt2 = -1
-				yyt5 = -1
-				goto yy49
+				yyt6 = -1
+				yyt7 = cursor
+				goto yy50
 			case 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF:
 				yyt1 = cursor
-				goto yy50
+				goto yy51
 			case 0xE0:
 				yyt1 = cursor
-				goto yy51
+				goto yy52
 			case 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF:
 				yyt1 = cursor
-				goto yy52
+				goto yy53
 			case 0xF0:
 				yyt1 = cursor
-				goto yy53
+				goto yy54
 			case 0xF1, 0xF2, 0xF3:
 				yyt1 = cursor
-				goto yy54
+				goto yy55
 			case 0xF4:
 				yyt1 = cursor
-				goto yy55
+				goto yy56
 			default:
 				goto yy48
 			}
@@ -621,11 +638,18 @@ func isNegativeClass1(input string) bool {
 			marker = cursor
 			yych = input[cursor]
 			switch yych {
+			case 'D':
+				fallthrough
+			case 'd':
+				yyt6 = cursor
+				yyt7 = cursor
+				goto yy57
 			case 'H':
 				fallthrough
 			case 'h':
-				yyt5 = cursor
-				goto yy56
+				yyt6 = cursor
+				yyt7 = cursor
+				goto yy59
 			default:
 				goto yy47
 			}
@@ -642,15 +666,20 @@ func isNegativeClass1(input string) bool {
 			marker = cursor
 			yych = input[cursor]
 			switch yych {
+			case '-':
+				goto yy60
+			case 'D':
+				fallthrough
+			case 'd':
+				yyt6 = cursor
+				yyt7 = cursor
+				goto yy57
 			case 'H':
 				fallthrough
 			case 'h':
-				yyt5 = cursor
-				goto yy56
-			case 'I':
-				fallthrough
-			case 'i':
-				goto yy58
+				yyt6 = cursor
+				yyt7 = cursor
+				goto yy59
 			default:
 				goto yy47
 			}
@@ -660,8 +689,22 @@ func isNegativeClass1(input string) bool {
 			marker = cursor
 			yych = input[cursor]
 			switch yych {
-			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
+			case 'D':
+				fallthrough
+			case 'd':
+				yyt6 = cursor
+				yyt7 = cursor
+				goto yy57
+			case 'H':
+				fallthrough
+			case 'h':
+				yyt6 = cursor
+				yyt7 = cursor
 				goto yy59
+			case 'I':
+				fallthrough
+			case 'i':
+				goto yy61
 			default:
 				goto yy47
 			}
@@ -671,8 +714,8 @@ func isNegativeClass1(input string) bool {
 			marker = cursor
 			yych = input[cursor]
 			switch yych {
-			case 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
-				goto yy60
+			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
+				goto yy62
 			default:
 				goto yy47
 			}
@@ -682,8 +725,8 @@ func isNegativeClass1(input string) bool {
 			marker = cursor
 			yych = input[cursor]
 			switch yych {
-			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
-				goto yy60
+			case 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
+				goto yy63
 			default:
 				goto yy47
 			}
@@ -693,8 +736,8 @@ func isNegativeClass1(input string) bool {
 			marker = cursor
 			yych = input[cursor]
 			switch yych {
-			case 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
-				goto yy61
+			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
+				goto yy63
 			default:
 				goto yy47
 			}
@@ -704,8 +747,8 @@ func isNegativeClass1(input string) bool {
 			marker = cursor
 			yych = input[cursor]
 			switch yych {
-			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
-				goto yy61
+			case 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
+				goto yy64
 			default:
 				goto yy47
 			}
@@ -715,12 +758,47 @@ func isNegativeClass1(input string) bool {
 			marker = cursor
 			yych = input[cursor]
 			switch yych {
-			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F:
-				goto yy61
+			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
+				goto yy64
 			default:
 				goto yy47
 			}
 		yy56:
+			yyaccept = 0
+			cursor++
+			marker = cursor
+			yych = input[cursor]
+			switch yych {
+			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F:
+				goto yy64
+			default:
+				goto yy47
+			}
+		yy57:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case '-':
+				yyt2 = yyt1
+				goto yy60
+			default:
+				goto yy58
+			}
+		yy58:
+			cursor = marker
+			switch yyaccept {
+			case 0:
+				goto yy47
+			case 1:
+				yyt3 = cursor
+				yyt4 = -1
+				yyt5 = -1
+				goto yy67
+			default:
+				yyt5 = cursor
+				goto yy67
+			}
+		yy59:
 			cursor++
 			yych = input[cursor]
 			switch yych {
@@ -728,61 +806,81 @@ func isNegativeClass1(input string) bool {
 				fallthrough
 			case 'i':
 				yyt2 = yyt1
-				goto yy58
+				goto yy61
 			default:
-				goto yy57
+				goto yy58
 			}
-		yy57:
-			cursor = marker
-			if yyaccept == 0 {
-				goto yy47
-			} else {
-				yyt3 = -1
-				yyt4 = -1
-				goto yy63
+		yy60:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'N':
+				fallthrough
+			case 'n':
+				goto yy65
+			default:
+				goto yy58
 			}
-		yy58:
+		yy61:
 			cursor++
 			yych = input[cursor]
 			switch yych {
 			case 'D':
 				fallthrough
 			case 'd':
-				goto yy62
+				goto yy66
 			default:
-				goto yy57
+				goto yy58
 			}
-		yy59:
+		yy62:
 			cursor++
 			yych = input[cursor]
 			switch yych {
+			case 'D':
+				fallthrough
+			case 'd':
+				yyt6 = cursor
+				yyt7 = cursor
+				goto yy57
 			case 'H':
 				fallthrough
 			case 'h':
-				yyt5 = cursor
-				goto yy56
-			default:
-				goto yy57
-			}
-		yy60:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
+				yyt6 = cursor
+				yyt7 = cursor
 				goto yy59
 			default:
-				goto yy57
+				goto yy58
 			}
-		yy61:
+		yy63:
 			cursor++
 			yych = input[cursor]
 			switch yych {
 			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
-				goto yy60
+				goto yy62
 			default:
-				goto yy57
+				goto yy58
 			}
-		yy62:
+		yy64:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
+				goto yy63
+			default:
+				goto yy58
+			}
+		yy65:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'O':
+				fallthrough
+			case 'o':
+				goto yy68
+			default:
+				goto yy58
+			}
+		yy66:
 			yyaccept = 1
 			cursor++
 			marker = cursor
@@ -792,44 +890,65 @@ func isNegativeClass1(input string) bool {
 				fallthrough
 			case 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, '\t':
 				fallthrough
-			case '\v', '\f', '\r', 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, ' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', 0x7F:
+			case '\v', '\f', '\r', 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, ' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C':
+				fallthrough
+			case 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c':
+				fallthrough
+			case 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', 0x7F:
 				if limit <= cursor {
-					yyt3 = -1
+					yyt3 = cursor
 					yyt4 = -1
-					goto yy63
+					yyt5 = -1
+					goto yy67
 				}
 				yyt3 = cursor
-				goto yy64
+				yyt4 = cursor
+				goto yy69
+			case 'D':
+				fallthrough
+			case 'd':
+				yyt3 = cursor
+				yyt4 = cursor
+				goto yy70
 			case 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF:
 				yyt3 = cursor
-				goto yy65
+				yyt4 = cursor
+				goto yy71
 			case 0xE0:
 				yyt3 = cursor
-				goto yy66
+				yyt4 = cursor
+				goto yy72
 			case 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF:
 				yyt3 = cursor
-				goto yy67
+				yyt4 = cursor
+				goto yy73
 			case 0xF0:
 				yyt3 = cursor
-				goto yy68
+				yyt4 = cursor
+				goto yy74
 			case 0xF1, 0xF2, 0xF3:
 				yyt3 = cursor
-				goto yy69
+				yyt4 = cursor
+				goto yy75
 			case 0xF4:
 				yyt3 = cursor
-				goto yy70
+				yyt4 = cursor
+				goto yy76
 			default:
-				yyt3 = -1
+				yyt3 = cursor
 				yyt4 = -1
-				goto yy63
+				yyt5 = -1
+				goto yy67
 			}
-		yy63:
-			yynmatch = 3
+		yy67:
+			yynmatch = 4
 			yypmatch[0] = yyt1
 			yypmatch[2] = yyt2
-			yypmatch[3] = yyt5
-			yypmatch[4] = yyt3
-			yypmatch[5] = yyt4
+			yypmatch[3] = yyt6
+			yypmatch[4] = yyt7
+			yypmatch[5] = yyt3
+			yypmatch[6] = yyt4
+			yypmatch[7] = yyt5
 			yypmatch[1] = cursor
 			{
 				// Extract submatch first
@@ -840,8 +959,8 @@ func isNegativeClass1(input string) bool {
 					sub1 = input[yypmatch[2]:yypmatch[3]]
 				}
 
-				if yypmatch[4] != -1 {
-					sub2 = input[yypmatch[4]:yypmatch[5]]
+				if yypmatch[6] != -1 {
+					sub2 = input[yypmatch[6]:yypmatch[7]]
 				}
 
 				case1 := start == 0 && end == limit && sub1 == "" && sub2 == "" // '^hid$'
@@ -854,65 +973,162 @@ func isNegativeClass1(input string) bool {
 				}
 				continue
 			}
-		yy64:
-			cursor++
-			yyt4 = cursor
-			goto yy63
-		yy65:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
-				goto yy64
-			default:
-				goto yy57
-			}
-		yy66:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
-				goto yy65
-			default:
-				goto yy57
-			}
-		yy67:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
-				goto yy65
-			default:
-				goto yy57
-			}
 		yy68:
 			cursor++
 			yych = input[cursor]
 			switch yych {
-			case 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
-				goto yy67
+			case 'N':
+				fallthrough
+			case 'n':
+				goto yy77
 			default:
-				goto yy57
+				goto yy58
 			}
 		yy69:
+			cursor++
+			yyt5 = cursor
+			goto yy67
+		yy70:
+			yyaccept = 2
+			cursor++
+			marker = cursor
+			yych = input[cursor]
+			switch yych {
+			case 'E':
+				fallthrough
+			case 'e':
+				goto yy78
+			default:
+				yyt5 = cursor
+				goto yy67
+			}
+		yy71:
 			cursor++
 			yych = input[cursor]
 			switch yych {
 			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
-				goto yy67
+				goto yy69
 			default:
-				goto yy57
+				goto yy58
 			}
-		yy70:
+		yy72:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
+				goto yy71
+			default:
+				goto yy58
+			}
+		yy73:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
+				goto yy71
+			default:
+				goto yy58
+			}
+		yy74:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
+				goto yy73
+			default:
+				goto yy58
+			}
+		yy75:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
+				goto yy73
+			default:
+				goto yy58
+			}
+		yy76:
 			cursor++
 			yych = input[cursor]
 			switch yych {
 			case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F:
-				goto yy67
+				goto yy73
 			default:
-				goto yy57
+				goto yy58
 			}
-		yy71:
+		yy77:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'E':
+				fallthrough
+			case 'e':
+				goto yy79
+			default:
+				goto yy58
+			}
+		yy78:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'N':
+				fallthrough
+			case 'n':
+				goto yy79
+			default:
+				goto yy58
+			}
+		yy79:
+			yyaccept = 1
+			cursor++
+			marker = cursor
+			yych = input[cursor]
+			switch yych {
+			case 0x00:
+				fallthrough
+			case 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, '\t':
+				fallthrough
+			case '\v', '\f', '\r', 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, ' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', 0x7F:
+				if limit <= cursor {
+					yyt3 = cursor
+					yyt4 = -1
+					yyt5 = -1
+					goto yy67
+				}
+				yyt3 = cursor
+				yyt4 = cursor
+				goto yy69
+			case 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF:
+				yyt3 = cursor
+				yyt4 = cursor
+				goto yy71
+			case 0xE0:
+				yyt3 = cursor
+				yyt4 = cursor
+				goto yy72
+			case 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF:
+				yyt3 = cursor
+				yyt4 = cursor
+				goto yy73
+			case 0xF0:
+				yyt3 = cursor
+				yyt4 = cursor
+				goto yy74
+			case 0xF1, 0xF2, 0xF3:
+				yyt3 = cursor
+				yyt4 = cursor
+				goto yy75
+			case 0xF4:
+				yyt3 = cursor
+				yyt4 = cursor
+				goto yy76
+			default:
+				yyt3 = cursor
+				yyt4 = -1
+				yyt5 = -1
+				goto yy67
+			}
+		yy80:
 			{
 				return false
 			}
@@ -921,7 +1137,7 @@ func isNegativeClass1(input string) bool {
 	}
 }
 
-// This one handle: `-ad-|hidden|banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|scroll|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget`
+// This one handle: `-ad-|banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget`
 func isNegativeClass2(input string) bool {
 	var cursor, marker int
 	input += string(rune(0)) // add terminating null
@@ -934,68 +1150,64 @@ func isNegativeClass2(input string) bool {
 			yych = input[cursor]
 			switch yych {
 			case '-':
-				goto yy75
+				goto yy84
 			case 'B':
 				fallthrough
 			case 'b':
-				goto yy76
+				goto yy85
 			case 'C':
 				fallthrough
 			case 'c':
-				goto yy77
+				goto yy86
 			case 'F':
 				fallthrough
 			case 'f':
-				goto yy78
+				goto yy87
 			case 'G':
 				fallthrough
 			case 'g':
-				goto yy79
-			case 'H':
-				fallthrough
-			case 'h':
-				goto yy80
+				goto yy88
 			case 'M':
 				fallthrough
 			case 'm':
-				goto yy81
+				goto yy89
 			case 'O':
 				fallthrough
 			case 'o':
-				goto yy82
+				goto yy90
 			case 'P':
 				fallthrough
 			case 'p':
-				goto yy83
+				goto yy91
 			case 'R':
 				fallthrough
 			case 'r':
-				goto yy84
+				goto yy92
 			case 'S':
 				fallthrough
 			case 's':
-				goto yy85
+				goto yy93
 			case 'T':
 				fallthrough
 			case 't':
-				goto yy86
+				goto yy94
 			case 'W':
 				fallthrough
 			case 'w':
-				goto yy87
+				goto yy95
 			default:
 				if limit <= cursor {
-					goto yy167
+					goto yy168
 				}
-				goto yy73
+				goto yy82
 			}
-		yy73:
+		yy82:
 			cursor++
-		yy74:
+		yy83:
 			{
 				continue
 			}
-		yy75:
+		yy84:
 			cursor++
 			marker = cursor
 			yych = input[cursor]
@@ -1003,11 +1215,11 @@ func isNegativeClass2(input string) bool {
 			case 'A':
 				fallthrough
 			case 'a':
-				goto yy88
+				goto yy96
 			default:
-				goto yy74
+				goto yy83
 			}
-		yy76:
+		yy85:
 			cursor++
 			marker = cursor
 			yych = input[cursor]
@@ -1015,11 +1227,11 @@ func isNegativeClass2(input string) bool {
 			case 'A':
 				fallthrough
 			case 'a':
-				goto yy90
+				goto yy98
 			default:
-				goto yy74
+				goto yy83
 			}
-		yy77:
+		yy86:
 			cursor++
 			marker = cursor
 			yych = input[cursor]
@@ -1027,11 +1239,11 @@ func isNegativeClass2(input string) bool {
 			case 'O':
 				fallthrough
 			case 'o':
-				goto yy91
+				goto yy99
 			default:
-				goto yy74
+				goto yy83
 			}
-		yy78:
+		yy87:
 			cursor++
 			marker = cursor
 			yych = input[cursor]
@@ -1039,11 +1251,11 @@ func isNegativeClass2(input string) bool {
 			case 'O':
 				fallthrough
 			case 'o':
-				goto yy92
+				goto yy100
 			default:
-				goto yy74
+				goto yy83
 			}
-		yy79:
+		yy88:
 			cursor++
 			marker = cursor
 			yych = input[cursor]
@@ -1051,23 +1263,11 @@ func isNegativeClass2(input string) bool {
 			case 'D':
 				fallthrough
 			case 'd':
-				goto yy93
+				goto yy101
 			default:
-				goto yy74
+				goto yy83
 			}
-		yy80:
-			cursor++
-			marker = cursor
-			yych = input[cursor]
-			switch yych {
-			case 'I':
-				fallthrough
-			case 'i':
-				goto yy94
-			default:
-				goto yy74
-			}
-		yy81:
+		yy89:
 			cursor++
 			marker = cursor
 			yych = input[cursor]
@@ -1075,15 +1275,15 @@ func isNegativeClass2(input string) bool {
 			case 'A':
 				fallthrough
 			case 'a':
-				goto yy95
+				goto yy102
 			case 'E':
 				fallthrough
 			case 'e':
-				goto yy96
+				goto yy103
 			default:
-				goto yy74
+				goto yy83
 			}
-		yy82:
+		yy90:
 			cursor++
 			marker = cursor
 			yych = input[cursor]
@@ -1091,11 +1291,11 @@ func isNegativeClass2(input string) bool {
 			case 'U':
 				fallthrough
 			case 'u':
-				goto yy97
+				goto yy104
 			default:
-				goto yy74
+				goto yy83
 			}
-		yy83:
+		yy91:
 			cursor++
 			marker = cursor
 			yych = input[cursor]
@@ -1103,11 +1303,11 @@ func isNegativeClass2(input string) bool {
 			case 'R':
 				fallthrough
 			case 'r':
-				goto yy98
+				goto yy105
 			default:
-				goto yy74
+				goto yy83
 			}
-		yy84:
+		yy92:
 			cursor++
 			marker = cursor
 			yych = input[cursor]
@@ -1115,39 +1315,35 @@ func isNegativeClass2(input string) bool {
 			case 'E':
 				fallthrough
 			case 'e':
-				goto yy99
+				goto yy106
 			default:
-				goto yy74
+				goto yy83
 			}
-		yy85:
+		yy93:
 			cursor++
 			marker = cursor
 			yych = input[cursor]
 			switch yych {
-			case 'C':
-				fallthrough
-			case 'c':
-				goto yy100
 			case 'H':
 				fallthrough
 			case 'h':
-				goto yy101
+				goto yy107
 			case 'I':
 				fallthrough
 			case 'i':
-				goto yy102
+				goto yy108
 			case 'K':
 				fallthrough
 			case 'k':
-				goto yy103
+				goto yy109
 			case 'P':
 				fallthrough
 			case 'p':
-				goto yy104
+				goto yy110
 			default:
-				goto yy74
+				goto yy83
 			}
-		yy86:
+		yy94:
 			cursor++
 			marker = cursor
 			yych = input[cursor]
@@ -1155,11 +1351,11 @@ func isNegativeClass2(input string) bool {
 			case 'A':
 				fallthrough
 			case 'a':
-				goto yy105
+				goto yy111
 			default:
-				goto yy74
+				goto yy83
 			}
-		yy87:
+		yy95:
 			cursor++
 			marker = cursor
 			yych = input[cursor]
@@ -1167,93 +1363,9 @@ func isNegativeClass2(input string) bool {
 			case 'I':
 				fallthrough
 			case 'i':
-				goto yy106
-			default:
-				goto yy74
-			}
-		yy88:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'D':
-				fallthrough
-			case 'd':
-				goto yy107
-			default:
-				goto yy89
-			}
-		yy89:
-			cursor = marker
-			goto yy74
-		yy90:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'N':
-				fallthrough
-			case 'n':
-				goto yy108
-			default:
-				goto yy89
-			}
-		yy91:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'M':
-				fallthrough
-			case 'm':
-				goto yy109
-			case 'N':
-				fallthrough
-			case 'n':
-				goto yy110
-			default:
-				goto yy89
-			}
-		yy92:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'O':
-				fallthrough
-			case 'o':
-				goto yy111
-			default:
-				goto yy89
-			}
-		yy93:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'P':
-				fallthrough
-			case 'p':
 				goto yy112
 			default:
-				goto yy89
-			}
-		yy94:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'D':
-				fallthrough
-			case 'd':
-				goto yy113
-			default:
-				goto yy89
-			}
-		yy95:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'S':
-				fallthrough
-			case 's':
-				goto yy114
-			default:
-				goto yy89
+				goto yy83
 			}
 		yy96:
 			cursor++
@@ -1262,118 +1374,136 @@ func isNegativeClass2(input string) bool {
 			case 'D':
 				fallthrough
 			case 'd':
-				goto yy115
-			case 'T':
-				fallthrough
-			case 't':
-				goto yy116
+				goto yy113
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy97:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'T':
-				fallthrough
-			case 't':
-				goto yy117
-			default:
-				goto yy89
-			}
+			cursor = marker
+			goto yy83
 		yy98:
 			cursor++
 			yych = input[cursor]
 			switch yych {
-			case 'O':
+			case 'N':
 				fallthrough
-			case 'o':
-				goto yy118
+			case 'n':
+				goto yy114
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy99:
 			cursor++
 			yych = input[cursor]
 			switch yych {
-			case 'L':
+			case 'M':
 				fallthrough
-			case 'l':
-				goto yy119
+			case 'm':
+				goto yy115
+			case 'N':
+				fallthrough
+			case 'n':
+				goto yy116
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy100:
 			cursor++
 			yych = input[cursor]
 			switch yych {
-			case 'R':
+			case 'O':
 				fallthrough
-			case 'r':
-				goto yy120
+			case 'o':
+				goto yy117
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy101:
 			cursor++
 			yych = input[cursor]
 			switch yych {
-			case 'A':
+			case 'P':
 				fallthrough
-			case 'a':
-				goto yy121
-			case 'O':
-				fallthrough
-			case 'o':
-				goto yy122
+			case 'p':
+				goto yy118
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy102:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'S':
+				fallthrough
+			case 's':
+				goto yy119
+			default:
+				goto yy97
+			}
+		yy103:
 			cursor++
 			yych = input[cursor]
 			switch yych {
 			case 'D':
 				fallthrough
 			case 'd':
-				goto yy123
+				goto yy120
+			case 'T':
+				fallthrough
+			case 't':
+				goto yy121
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy103:
+		yy104:
 			cursor++
 			yych = input[cursor]
 			switch yych {
-			case 'Y':
+			case 'T':
 				fallthrough
-			case 'y':
-				goto yy124
+			case 't':
+				goto yy122
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy104:
+		yy105:
 			cursor++
 			yych = input[cursor]
 			switch yych {
 			case 'O':
 				fallthrough
 			case 'o':
-				goto yy125
+				goto yy123
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy105:
+		yy106:
 			cursor++
 			yych = input[cursor]
 			switch yych {
-			case 'G':
+			case 'L':
 				fallthrough
-			case 'g':
+			case 'l':
+				goto yy124
+			default:
+				goto yy97
+			}
+		yy107:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'A':
+				fallthrough
+			case 'a':
+				goto yy125
+			case 'O':
+				fallthrough
+			case 'o':
 				goto yy126
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy106:
+		yy108:
 			cursor++
 			yych = input[cursor]
 			switch yych {
@@ -1382,295 +1512,273 @@ func isNegativeClass2(input string) bool {
 			case 'd':
 				goto yy127
 			default:
-				goto yy89
-			}
-		yy107:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case '-':
-				goto yy128
-			default:
-				goto yy89
-			}
-		yy108:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'N':
-				fallthrough
-			case 'n':
-				goto yy129
-			default:
-				goto yy89
+				goto yy97
 			}
 		yy109:
 			cursor++
 			yych = input[cursor]
 			switch yych {
-			case '-':
+			case 'Y':
+				fallthrough
+			case 'y':
 				goto yy128
-			case 'B':
-				fallthrough
-			case 'b':
-				goto yy130
-			case 'M':
-				fallthrough
-			case 'm':
-				goto yy131
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy110:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'T':
-				fallthrough
-			case 't':
-				goto yy132
-			default:
-				goto yy89
-			}
-		yy111:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'T':
-				fallthrough
-			case 't':
-				goto yy129
-			default:
-				goto yy89
-			}
-		yy112:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'R':
-				fallthrough
-			case 'r':
-				goto yy128
-			default:
-				goto yy89
-			}
-		yy113:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'D':
-				fallthrough
-			case 'd':
-				goto yy133
-			default:
-				goto yy89
-			}
-		yy114:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'T':
-				fallthrough
-			case 't':
-				goto yy134
-			default:
-				goto yy89
-			}
-		yy115:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'I':
-				fallthrough
-			case 'i':
-				goto yy116
-			default:
-				goto yy89
-			}
-		yy116:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'A':
-				fallthrough
-			case 'a':
-				goto yy128
-			default:
-				goto yy89
-			}
-		yy117:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'B':
-				fallthrough
-			case 'b':
-				goto yy135
-			default:
-				goto yy89
-			}
-		yy118:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'M':
-				fallthrough
-			case 'm':
-				goto yy136
-			default:
-				goto yy89
-			}
-		yy119:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'A':
-				fallthrough
-			case 'a':
-				goto yy137
-			default:
-				goto yy89
-			}
-		yy120:
 			cursor++
 			yych = input[cursor]
 			switch yych {
 			case 'O':
 				fallthrough
 			case 'o':
-				goto yy138
+				goto yy129
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy121:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'R':
-				fallthrough
-			case 'r':
-				goto yy139
-			default:
-				goto yy89
-			}
-		yy122:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'P':
-				fallthrough
-			case 'p':
-				goto yy140
-			case 'U':
-				fallthrough
-			case 'u':
-				goto yy141
-			default:
-				goto yy89
-			}
-		yy123:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'E':
-				fallthrough
-			case 'e':
-				goto yy142
-			default:
-				goto yy89
-			}
-		yy124:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'S':
-				fallthrough
-			case 's':
-				goto yy143
-			default:
-				goto yy89
-			}
-		yy125:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'N':
-				fallthrough
-			case 'n':
-				goto yy144
-			default:
-				goto yy89
-			}
-		yy126:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'S':
-				fallthrough
-			case 's':
-				goto yy128
-			default:
-				goto yy89
-			}
-		yy127:
+		yy111:
 			cursor++
 			yych = input[cursor]
 			switch yych {
 			case 'G':
 				fallthrough
 			case 'g':
-				goto yy145
+				goto yy130
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy128:
-			cursor++
-			{
-				return true
-			}
-		yy129:
+		yy112:
 			cursor++
 			yych = input[cursor]
 			switch yych {
-			case 'E':
+			case 'D':
 				fallthrough
-			case 'e':
-				goto yy112
+			case 'd':
+				goto yy131
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy130:
+		yy113:
 			cursor++
 			yych = input[cursor]
 			switch yych {
-			case 'X':
-				fallthrough
-			case 'x':
-				goto yy128
+			case '-':
+				goto yy132
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy131:
+		yy114:
 			cursor++
 			yych = input[cursor]
 			switch yych {
-			case 'E':
+			case 'N':
 				fallthrough
-			case 'e':
-				goto yy146
+			case 'n':
+				goto yy133
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy132:
+		yy115:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case '-':
+				goto yy132
+			case 'B':
+				fallthrough
+			case 'b':
+				goto yy134
+			case 'M':
+				fallthrough
+			case 'm':
+				goto yy135
+			default:
+				goto yy97
+			}
+		yy116:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'T':
+				fallthrough
+			case 't':
+				goto yy136
+			default:
+				goto yy97
+			}
+		yy117:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'T':
+				fallthrough
+			case 't':
+				goto yy133
+			default:
+				goto yy97
+			}
+		yy118:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'R':
+				fallthrough
+			case 'r':
+				goto yy132
+			default:
+				goto yy97
+			}
+		yy119:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'T':
+				fallthrough
+			case 't':
+				goto yy137
+			default:
+				goto yy97
+			}
+		yy120:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'I':
+				fallthrough
+			case 'i':
+				goto yy121
+			default:
+				goto yy97
+			}
+		yy121:
 			cursor++
 			yych = input[cursor]
 			switch yych {
 			case 'A':
 				fallthrough
 			case 'a':
+				goto yy132
+			default:
+				goto yy97
+			}
+		yy122:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'B':
+				fallthrough
+			case 'b':
+				goto yy138
+			default:
+				goto yy97
+			}
+		yy123:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'M':
+				fallthrough
+			case 'm':
+				goto yy139
+			default:
+				goto yy97
+			}
+		yy124:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'A':
+				fallthrough
+			case 'a':
+				goto yy140
+			default:
+				goto yy97
+			}
+		yy125:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'R':
+				fallthrough
+			case 'r':
+				goto yy141
+			default:
+				goto yy97
+			}
+		yy126:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'P':
+				fallthrough
+			case 'p':
+				goto yy142
+			case 'U':
+				fallthrough
+			case 'u':
+				goto yy143
+			default:
+				goto yy97
+			}
+		yy127:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'E':
+				fallthrough
+			case 'e':
+				goto yy144
+			default:
+				goto yy97
+			}
+		yy128:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'S':
+				fallthrough
+			case 's':
+				goto yy145
+			default:
+				goto yy97
+			}
+		yy129:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'N':
+				fallthrough
+			case 'n':
+				goto yy146
+			default:
+				goto yy97
+			}
+		yy130:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'S':
+				fallthrough
+			case 's':
+				goto yy132
+			default:
+				goto yy97
+			}
+		yy131:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'G':
+				fallthrough
+			case 'g':
 				goto yy147
 			default:
-				goto yy89
+				goto yy97
+			}
+		yy132:
+			cursor++
+			{
+				return true
 			}
 		yy133:
 			cursor++
@@ -1679,77 +1787,99 @@ func isNegativeClass2(input string) bool {
 			case 'E':
 				fallthrough
 			case 'e':
-				goto yy148
+				goto yy118
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy134:
 			cursor++
 			yych = input[cursor]
 			switch yych {
-			case 'H':
+			case 'X':
 				fallthrough
-			case 'h':
-				goto yy149
+			case 'x':
+				goto yy132
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy135:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'R':
-				fallthrough
-			case 'r':
-				goto yy150
-			default:
-				goto yy89
-			}
-		yy136:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'O':
-				fallthrough
-			case 'o':
-				goto yy128
-			default:
-				goto yy89
-			}
-		yy137:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'T':
-				fallthrough
-			case 't':
-				goto yy151
-			default:
-				goto yy89
-			}
-		yy138:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'L':
-				fallthrough
-			case 'l':
-				goto yy152
-			default:
-				goto yy89
-			}
-		yy139:
 			cursor++
 			yych = input[cursor]
 			switch yych {
 			case 'E':
 				fallthrough
 			case 'e':
-				goto yy128
+				goto yy148
 			default:
-				goto yy89
+				goto yy97
+			}
+		yy136:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'A':
+				fallthrough
+			case 'a':
+				goto yy149
+			default:
+				goto yy97
+			}
+		yy137:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'H':
+				fallthrough
+			case 'h':
+				goto yy150
+			default:
+				goto yy97
+			}
+		yy138:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'R':
+				fallthrough
+			case 'r':
+				goto yy151
+			default:
+				goto yy97
+			}
+		yy139:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'O':
+				fallthrough
+			case 'o':
+				goto yy132
+			default:
+				goto yy97
 			}
 		yy140:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'T':
+				fallthrough
+			case 't':
+				goto yy152
+			default:
+				goto yy97
+			}
+		yy141:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'E':
+				fallthrough
+			case 'e':
+				goto yy132
+			default:
+				goto yy97
+			}
+		yy142:
 			cursor++
 			yych = input[cursor]
 			switch yych {
@@ -1758,9 +1888,9 @@ func isNegativeClass2(input string) bool {
 			case 'p':
 				goto yy153
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy141:
+		yy143:
 			cursor++
 			yych = input[cursor]
 			switch yych {
@@ -1769,9 +1899,9 @@ func isNegativeClass2(input string) bool {
 			case 't':
 				goto yy154
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy142:
+		yy144:
 			cursor++
 			yych = input[cursor]
 			switch yych {
@@ -1780,9 +1910,9 @@ func isNegativeClass2(input string) bool {
 			case 'b':
 				goto yy155
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy143:
+		yy145:
 			cursor++
 			yych = input[cursor]
 			switch yych {
@@ -1791,9 +1921,9 @@ func isNegativeClass2(input string) bool {
 			case 'c':
 				goto yy156
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy144:
+		yy146:
 			cursor++
 			yych = input[cursor]
 			switch yych {
@@ -1802,9 +1932,9 @@ func isNegativeClass2(input string) bool {
 			case 's':
 				goto yy157
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy145:
+		yy147:
 			cursor++
 			yych = input[cursor]
 			switch yych {
@@ -1813,29 +1943,7 @@ func isNegativeClass2(input string) bool {
 			case 'e':
 				goto yy158
 			default:
-				goto yy89
-			}
-		yy146:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'N':
-				fallthrough
-			case 'n':
-				goto yy158
-			default:
-				goto yy89
-			}
-		yy147:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'C':
-				fallthrough
-			case 'c':
-				goto yy158
-			default:
-				goto yy89
+				goto yy97
 			}
 		yy148:
 			cursor++
@@ -1844,11 +1952,22 @@ func isNegativeClass2(input string) bool {
 			case 'N':
 				fallthrough
 			case 'n':
-				goto yy128
+				goto yy158
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy149:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'C':
+				fallthrough
+			case 'c':
+				goto yy158
+			default:
+				goto yy97
+			}
+		yy150:
 			cursor++
 			yych = input[cursor]
 			switch yych {
@@ -1857,9 +1976,9 @@ func isNegativeClass2(input string) bool {
 			case 'e':
 				goto yy159
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy150:
+		yy151:
 			cursor++
 			yych = input[cursor]
 			switch yych {
@@ -1868,9 +1987,9 @@ func isNegativeClass2(input string) bool {
 			case 'a':
 				goto yy160
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy151:
+		yy152:
 			cursor++
 			yych = input[cursor]
 			switch yych {
@@ -1879,18 +1998,7 @@ func isNegativeClass2(input string) bool {
 			case 'e':
 				goto yy161
 			default:
-				goto yy89
-			}
-		yy152:
-			cursor++
-			yych = input[cursor]
-			switch yych {
-			case 'L':
-				fallthrough
-			case 'l':
-				goto yy128
-			default:
-				goto yy89
+				goto yy97
 			}
 		yy153:
 			cursor++
@@ -1901,7 +2009,7 @@ func isNegativeClass2(input string) bool {
 			case 'i':
 				goto yy162
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy154:
 			cursor++
@@ -1912,7 +2020,7 @@ func isNegativeClass2(input string) bool {
 			case 'b':
 				goto yy163
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy155:
 			cursor++
@@ -1921,9 +2029,9 @@ func isNegativeClass2(input string) bool {
 			case 'A':
 				fallthrough
 			case 'a':
-				goto yy112
+				goto yy118
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy156:
 			cursor++
@@ -1934,7 +2042,7 @@ func isNegativeClass2(input string) bool {
 			case 'r':
 				goto yy164
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy157:
 			cursor++
@@ -1943,9 +2051,9 @@ func isNegativeClass2(input string) bool {
 			case 'O':
 				fallthrough
 			case 'o':
-				goto yy112
+				goto yy118
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy158:
 			cursor++
@@ -1954,9 +2062,9 @@ func isNegativeClass2(input string) bool {
 			case 'T':
 				fallthrough
 			case 't':
-				goto yy128
+				goto yy132
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy159:
 			cursor++
@@ -1967,7 +2075,7 @@ func isNegativeClass2(input string) bool {
 			case 'a':
 				goto yy161
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy160:
 			cursor++
@@ -1976,9 +2084,9 @@ func isNegativeClass2(input string) bool {
 			case 'I':
 				fallthrough
 			case 'i':
-				goto yy148
+				goto yy165
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy161:
 			cursor++
@@ -1987,9 +2095,9 @@ func isNegativeClass2(input string) bool {
 			case 'D':
 				fallthrough
 			case 'd':
-				goto yy128
+				goto yy132
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy162:
 			cursor++
@@ -1998,9 +2106,9 @@ func isNegativeClass2(input string) bool {
 			case 'N':
 				fallthrough
 			case 'n':
-				goto yy165
+				goto yy166
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy163:
 			cursor++
@@ -2009,9 +2117,9 @@ func isNegativeClass2(input string) bool {
 			case 'O':
 				fallthrough
 			case 'o':
-				goto yy130
+				goto yy134
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy164:
 			cursor++
@@ -2020,33 +2128,44 @@ func isNegativeClass2(input string) bool {
 			case 'A':
 				fallthrough
 			case 'a':
-				goto yy166
+				goto yy167
 			default:
-				goto yy89
+				goto yy97
 			}
 		yy165:
+			cursor++
+			yych = input[cursor]
+			switch yych {
+			case 'N':
+				fallthrough
+			case 'n':
+				goto yy132
+			default:
+				goto yy97
+			}
+		yy166:
 			cursor++
 			yych = input[cursor]
 			switch yych {
 			case 'G':
 				fallthrough
 			case 'g':
-				goto yy128
+				goto yy132
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy166:
+		yy167:
 			cursor++
 			yych = input[cursor]
 			switch yych {
 			case 'P':
 				fallthrough
 			case 'p':
-				goto yy129
+				goto yy133
 			default:
-				goto yy89
+				goto yy97
 			}
-		yy167:
+		yy168:
 			{
 				return false
 			}
