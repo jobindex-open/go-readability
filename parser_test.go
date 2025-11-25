@@ -190,7 +190,10 @@ func ExampleFromReader() {
 	}
 
 	fmt.Printf("Found article with title %q\n\n", article.Title())
-	article.RenderHTML(os.Stdout)
+	// Print the parsed, cleaned-up HTML markup of the article.
+	if err := article.RenderHTML(os.Stdout); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func extractSourceFile(path string) (Article, bool, *html.Node, error) {
