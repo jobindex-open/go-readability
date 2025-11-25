@@ -8,3 +8,6 @@ generate:
 
 test: generate
 	go test -timeout 30s ./...
+
+lint:
+	golangci-lint run
