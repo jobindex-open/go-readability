@@ -10,12 +10,18 @@ This module is compatible with Readability.js v0.6.0.
 
 ## Installation
 
-**Note:** you are viewing documentation for version 0, which is API-compatible with `github.com/go-shiori/go-readability`. The development of this project continues in the [v2 branch], which you should choose for best speed and memory efficiency, but do note that there have been some breaking API changes.
+**Note:** you are viewing documentation for version 0, which is API-compatible with `github.com/go-shiori/go-readability`. The development of this project continues in the [v2 branch], which you should choose for _best speed and memory efficiency_, with API-breaking changes being that some `Article` fields were converted to methods.
 
-To install this package, use `go get`:
+To add this package to your project, use `go get`:
 
 ```
 go get -u codeberg.org/readeck/go-readability
+```
+
+And to get the [v2 branch] instead:
+
+```
+go get -u codeberg.org/readeck/go-readability/v2
 ```
 
 ## Example
@@ -44,7 +50,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Found article with title %q\n\n", article.Title())
+	fmt.Printf("Found article with title %q\n\n", article.Title)
 	// Print the parsed, cleaned-up HTML markup of the article.
 	fmt.Println(article.Content)
 }
