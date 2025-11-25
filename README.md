@@ -80,6 +80,6 @@ Flags:
 ```
 
 
-[go-ref]: https://pkg.go.dev/codeberg.org/readeck/go-readability
+[go-ref]: https://pkg.go.dev/codeberg.org/readeck/go-readability/v2
 [go-ref-badge]: https://img.shields.io/static/v1?label=&message=Reference&color=007d9c&logo=go&logoColor=white
 [readability.js]: https://github.com/mozilla/readability
