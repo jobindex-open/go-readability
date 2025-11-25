@@ -82,6 +82,7 @@ func Test_IsNegativeClass(t *testing.T) {
 		"combx":          true,
 		"comment":        true,
 		"contact":        true,
+		"d-none":         true,
 		"footer":         true,
 		"gdpr":           true,
 		"hid class":      true,
@@ -93,7 +94,6 @@ func Test_IsNegativeClass(t *testing.T) {
 		"outbrain":       true,
 		"promo":          true,
 		"related":        true,
-		"scroll":         true,
 		"share":          true,
 		"shopping":       true,
 		"shoutbox":       true,
@@ -103,19 +103,22 @@ func Test_IsNegativeClass(t *testing.T) {
 		"tags":           true,
 		"widget":         true,
 
-		"catalog":   false,
-		"details":   false,
-		"foot":      false,
-		"footnote":  false,
-		"gallery":   false,
-		"navbar":    false,
-		"news-feed": false,
-		"overview":  false,
-		"profile":   false,
-		"support":   false,
-		"tool":      false,
-		"toolbar":   false,
-		"user-menu": false,
+		"catalog":         false,
+		"details":         false,
+		"foot":            false,
+		"footnote":        false,
+		"gallery":         false,
+		"navbar":          false,
+		"news-feed":       false,
+		"overview":        false,
+		"profile":         false,
+		"scroll":          false,
+		"sad-nonet":       false,
+		"support":         false,
+		"tool":            false,
+		"toolbar":         false,
+		"user-menu":       false,
+		"visually-hidden": false,
 	}
 	for matchString, expected := range tests {
 		if got := IsNegativeClass(matchString); got != expected {
@@ -206,6 +209,34 @@ func Test_MaybeItsACandidate(t *testing.T) {
 		upper := strings.ToUpper(matchString)
 		if got := MaybeItsACandidate(upper); got != expected {
 			t.Errorf("MaybeItsACandidate(%q): expected %v, got %v", upper, expected, got)
+		}
+	}
+}
+
+func Test_CSSUtilityClasses(t *testing.T) {
+	// Utility classnames, like for example those found in Tailwind projects, that should generally
+	// never trigger any content scoring heuristics.
+	tests := []string{
+		"overflow-hidden",
+		"sm:hidden",
+		"stacked-navigation--hidden",
+		"py-3 details-overlay-dark",
+		"overflow-x-scroll",
+		// "text-ellipsis md:text-clip",
+		// "before:content-[attr(before)]",
+	}
+	for _, matchString := range tests {
+		if IsPositiveClass(matchString) {
+			t.Errorf("IsPositiveClass() triggered by CSS utility class %q", matchString)
+		}
+		if IsNegativeClass(matchString) {
+			t.Errorf("IsNegativeClass() triggered by CSS utility class %q", matchString)
+		}
+		if MaybeItsACandidate(matchString) {
+			t.Errorf("MaybeItsACandidate() triggered by CSS utility class %q", matchString)
+		}
+		if IsUnlikelyCandidates(matchString) {
+			t.Errorf("IsUnlikelyCandidates() triggered by CSS utility class %q", matchString)
 		}
 	}
 }

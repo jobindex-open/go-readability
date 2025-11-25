@@ -20,17 +20,17 @@ func IsPositiveClass(input string) bool {
 }
 
 // For IsNegativeClass, its original pattern is like this:
-// (?i)-ad-|hidden|^hid$| hid$| hid |^hid |banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|scroll|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget
+// (?i)-ad-|hidden|^hid$| hid$| hid |^hid |banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget
 //
 // Unfortunately, re2go doesn't handle anchor like ^ and $ internally, so for convenience
 // I'll split that pattern into two:
-// - `^hid$| hid$| hid |^hid `
-// - `-ad-|hidden|banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|scroll|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget`
+// - `(^| )(hid|hidden|d-none)( |$)`
+// - `-ad-|banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget`
 func IsNegativeClass(input string) bool {
 	return isNegativeClass1(input) || isNegativeClass2(input)
 }
 
-// This one handle: `^hid$| hid$| hid |^hid `
+// This one handle: `(^| )(hid|hidden|d-none)( |$)`
 func isNegativeClass1(input string) bool {
 	var cursor, marker int
 	input += string(rune(0)) // add terminating null
@@ -50,7 +50,7 @@ func isNegativeClass1(input string) bool {
 		re2c:posix-captures   = 1;
 		re2c:case-insensitive = 1;
 
-		(.)?hid(.)? {
+		(.)?(hid|hidden|d-none)(.)? {
 			// Extract submatch first
 			var sub1, sub2 string
 			start, end := yypmatch[0], yypmatch[1]
@@ -59,8 +59,8 @@ func isNegativeClass1(input string) bool {
 				sub1 = input[yypmatch[2]:yypmatch[3]]
 			}
 
-			if yypmatch[4] != -1 {
-				sub2 = input[yypmatch[4]:yypmatch[5]]
+			if yypmatch[6] != -1 {
+				sub2 = input[yypmatch[6]:yypmatch[7]]
 			}
 
 			case1 := start == 0 && end == limit && sub1 == "" && sub2 == "" // '^hid$'
@@ -80,7 +80,7 @@ func isNegativeClass1(input string) bool {
 	}
 }
 
-// This one handle: `-ad-|hidden|banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|scroll|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget`
+// This one handle: `-ad-|banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget`
 func isNegativeClass2(input string) bool {
 	var cursor, marker int
 	input += string(rune(0)) // add terminating null
@@ -90,7 +90,7 @@ func isNegativeClass2(input string) bool {
 	for { /*!use:re2c:base_template
 		re2c:case-insensitive = 1;
 
-		negative = -ad-|hidden|banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|scroll|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget;
+		negative = -ad-|banner|combx|comment|com-|contact|footer|gdpr|masthead|media|meta|outbrain|promo|related|share|shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget;
 
 		{negative} { return true }
 		*          { continue }
