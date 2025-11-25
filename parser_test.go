@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	fp "path/filepath"
@@ -173,6 +174,23 @@ func Test_countCharsAndCommas(t *testing.T) {
 			}
 		})
 	}
+}
+
+func ExampleFromReader() {
+	srcFile, err := os.Open("index.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer srcFile.Close()
+
+	baseURL, _ := url.Parse("https://example.com/path/to/article")
+	article, err := FromReader(srcFile, baseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Found article with title %q\n\n", article.Title())
+	article.RenderHTML(os.Stdout)
 }
 
 func extractSourceFile(path string) (Article, bool, *html.Node, error) {
