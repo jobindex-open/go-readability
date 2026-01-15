@@ -675,7 +675,7 @@ func (ps *Parser) initializeNode(node *html.Node) {
 		contentScore += 5
 	case "pre", "td", "blockquote":
 		contentScore += 3
-	case "address", "ol", "ul", "dl", "dd", "dt", "li", "form":
+	case "address", "form":
 		contentScore -= 3
 	case "h1", "h2", "h3", "h4", "h5", "h6", "th":
 		contentScore -= 5
