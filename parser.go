@@ -2198,7 +2198,12 @@ func (ps *Parser) cleanConditionally(element *html.Node, tag string) {
 					headingCounter = headingChars.ResetContext()
 				case "a":
 					cc := &charCounter{}
-					linkCoefficient := getLinkDensityCoefficient(n)
+					var linkCoefficient float64 = 0
+					// Dirty workaround primarily for Substack images: don't count text within links
+					// inside figcaption elements as being "linky" to avoid whole images being stripped.
+					if n.Parent.Data != "figcaption" {
+						linkCoefficient = getLinkDensityCoefficient(n)
+					}
 					defer func() {
 						linkCharsWeighted += float64(cc.Total) * linkCoefficient
 					}()
