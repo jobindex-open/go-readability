@@ -57,7 +57,7 @@ func (a Article) Byline() string {
 
 func (a Article) Excerpt() string {
 	excerpt := a.excerpt
-	if excerpt == "" {
+	if excerpt == "" && a.Node != nil {
 		if paragraph := getElementByTagName(a.Node, "p"); paragraph != nil {
 			excerpt = strings.TrimSpace(render.InnerText(paragraph))
 		}
