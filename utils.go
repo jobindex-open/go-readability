@@ -6,7 +6,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"codeberg.org/readeck/go-readability/v2/internal/re2go"
+	"github.com/jobindex-open/go-readability/v2/internal/re2go"
 )
 
 // indexOf returns the position of the first occurrence of a

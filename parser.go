@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"codeberg.org/readeck/go-readability/v2/internal/re2go"
+	"github.com/jobindex-open/go-readability/v2/internal/re2go"
 	"github.com/go-shiori/dom"
 	"golang.org/x/net/html"
 )

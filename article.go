@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"codeberg.org/readeck/go-readability/v2/render"
+	"github.com/jobindex-open/go-readability/v2/render"
 	"github.com/araddon/dateparse"
 	"golang.org/x/net/html"
 )

@@ -1,4 +1,4 @@
-module codeberg.org/readeck/go-readability/v2
+module github.com/jobindex-open/go-readability/v2
 
 go 1.23.0
 

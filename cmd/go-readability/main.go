@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	readability "codeberg.org/readeck/go-readability/v2"
+	readability "github.com/jobindex-open/go-readability/v2"
 	"github.com/go-shiori/dom"
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
