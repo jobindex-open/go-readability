@@ -15,7 +15,7 @@
 set -euo pipefail
 
 UPSTREAM_REMOTE="upstream"
-UPSTREAM_BRANCH="main"
+UPSTREAM_BRANCH="v2"
 FORK_BRANCH="fork"
 PATCHES_DIR="patches"
 
