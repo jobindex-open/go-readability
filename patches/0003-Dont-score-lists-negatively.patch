@@ -1,0 +1,26 @@
+From c070a7ed62bf41710c8fa4f4b20fe61d033a8d2f Mon Sep 17 00:00:00 2001
+From: Niels Peter Roest <nero@jobindex.dk>
+Date: Thu, 15 Jan 2026 09:55:05 +0100
+Subject: [PATCH 3/3] Dont score lists negatively
+
+Jobads often have lists, so these aren't an indicator of bad content.
+---
+ parser.go | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/parser.go b/parser.go
+index 400451b..6b7588e 100644
+--- a/parser.go
++++ b/parser.go
+@@ -675,7 +675,7 @@ func (ps *Parser) initializeNode(node *html.Node) {
+ 		contentScore += 5
+ 	case "pre", "td", "blockquote":
+ 		contentScore += 3
+-	case "address", "ol", "ul", "dl", "dd", "dt", "li", "form":
++	case "address", "form":
+ 		contentScore -= 3
+ 	case "h1", "h2", "h3", "h4", "h5", "h6", "th":
+ 		contentScore -= 5
+-- 
+2.53.0
+
