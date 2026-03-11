@@ -23,7 +23,7 @@ git checkout patches
 If `sync-fork.sh` fails due to conflicts:
 
 1. Resolve conflicts in the fork branch (`git am --continue`)
-2. Regenerate patches: `git format-patch upstream/main -o /tmp/new-patches`
+2. Regenerate patches: `git format-patch upstream/v2 -o /tmp/new-patches`
 3. Update this branch:
    ```sh
    git checkout patches

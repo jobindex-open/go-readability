@@ -5,7 +5,7 @@
 # This script lives on the 'patches' branch. It:
 #   1. Fetches upstream
 #   2. Extracts patch files from the current branch (patches/)
-#   3. Resets the 'fork' branch to upstream/main
+#   3. Resets the 'fork' branch to upstream/v2
 #   4. Applies patches with git am
 #
 # Usage:
@@ -92,7 +92,7 @@ else
     echo "    git am --continue"
     echo ""
     echo "  After resolving, regenerate patches and update the patches branch:"
-    echo "    git format-patch upstream/main -o /tmp/new-patches"
+    echo "    git format-patch upstream/v2 -o /tmp/new-patches"
     echo "    git checkout patches"
     echo "    cp /tmp/new-patches/*.patch patches/"
     echo "    git add patches/ && git commit -m 'Update patches for latest upstream'"
