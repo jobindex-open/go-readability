@@ -5,7 +5,6 @@ import (
 	"math"
 	"strings"
 
-	"codeberg.org/readeck/go-readability/internal/re2go"
 	"github.com/go-shiori/dom"
 	"golang.org/x/net/html"
 )
@@ -59,8 +58,8 @@ func (ps *Parser) CheckDocument(doc *html.Node) bool {
 		}
 
 		matchString := dom.ClassName(node) + " " + dom.ID(node)
-		if re2go.IsUnlikelyCandidates(matchString) &&
-			!re2go.MaybeItsACandidate(matchString) {
+		if RxUnlikelyCandidates.MatchString(matchString) &&
+			!RxOkMaybeItsACandidate.MatchString(matchString) {
 			return false
 		}
 
