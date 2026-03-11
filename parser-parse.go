@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"codeberg.org/readeck/go-readability/render"
 	"github.com/araddon/dateparse"
 	"github.com/go-shiori/dom"
+	"github.com/jobindex-open/go-readability/render"
 	"golang.org/x/net/html"
 )
 
