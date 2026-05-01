@@ -1100,6 +1100,8 @@ func (ps *Parser) grabArticle() *html.Node {
 			lastScore := ps.getContentScore(topCandidate)
 			// The scores shouldn't get too lops.
 			scoreThreshold := lastScore / 3.0
+			belowThresholdSteps := 0
+			const maxBelowThresholdSteps = 3
 			for parentOfTopCandidate != nil && dom.TagName(parentOfTopCandidate) != "body" {
 				if !ps.hasContentScore(parentOfTopCandidate) {
 					parentOfTopCandidate = parentOfTopCandidate.Parent
@@ -1108,8 +1110,18 @@ func (ps *Parser) grabArticle() *html.Node {
 
 				parentScore := ps.getContentScore(parentOfTopCandidate)
 				if parentScore < scoreThreshold {
-					break
+					// Allow walking through small score valleys (e.g.
+					// non-semantic wrapper divs) to find a better
+					// ancestor container beyond the dip.
+					belowThresholdSteps++
+					if belowThresholdSteps > maxBelowThresholdSteps {
+						break
+					}
+					parentOfTopCandidate = parentOfTopCandidate.Parent
+					continue
 				}
+
+				belowThresholdSteps = 0
 
 				if parentScore > lastScore {
 					passLogger.Debug("found a better candidate by walking up the tree", slog.Float64("score", parentScore))
