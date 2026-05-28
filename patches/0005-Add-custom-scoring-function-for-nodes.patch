@@ -1,0 +1,40 @@
+From 634130869a84920b487e986000728a9aba6ea8c2 Mon Sep 17 00:00:00 2001
+From: Niels Peter Roest <nero@jobindex.dk>
+Date: Thu, 28 May 2026 10:16:12 +0200
+Subject: [PATCH] Add custom scoring function for nodes
+
+This allows one to score based on domain knowledge of how the text one wants looks, instead of looking relatively blindly for continous text.
+---
+ parser.go | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/parser.go b/parser.go
+index 8ad4869..d23cf4e 100644
+--- a/parser.go
++++ b/parser.go
+@@ -105,6 +105,11 @@ type Parser struct {
+ 	// DisableJSONLD determines if metadata in JSON+LD will be extracted
+ 	// or not. Default: false.
+ 	DisableJSONLD bool
++	// ScoreNode is an optional callback invoked when a candidate node is
++	// initialized. It receives the node and the initial score (from tag type
++	// and class weight). It returns a score adjustment that is added to the
++	// initial score (positive to boost, negative to penalize).
++	ScoreNode func(node *html.Node, initialScore float64) float64
+ 
+ 	doc             *html.Node
+ 	documentURI     *nurl.URL
+@@ -662,6 +667,10 @@ func (ps *Parser) initializeNode(node *html.Node) {
+ 		contentScore -= 5
+ 	}
+ 
++	if ps.ScoreNode != nil {
++		contentScore += ps.ScoreNode(node, contentScore)
++	}
++
+ 	ps.setContentScore(node, contentScore)
+ }
+ 
+-- 
+2.54.0
+
