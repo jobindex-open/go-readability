@@ -2,7 +2,7 @@ From 043730e2dbdb3a949e6025100a85a88f1d08fe9c Mon Sep 17 00:00:00 2001
 From: Niels Peter Roest <nero@jobindex.dk>
 Date: Wed, 11 Mar 2026 15:59:58 +0100
 Subject: [PATCH 1/3] Rename module to
- github.com/jobindex-open/go-readability/v2
+ github.com/jobindex-open/go-readability
 
 ---
  article.go                 | 2 +-
@@ -23,7 +23,7 @@ index 4d44c00..44305af 100644
  	"time"
  
 -	"codeberg.org/readeck/go-readability/v2/render"
-+	"github.com/jobindex-open/go-readability/v2/render"
++	"github.com/jobindex-open/go-readability/render"
  	"github.com/araddon/dateparse"
  	"golang.org/x/net/html"
  )
@@ -36,7 +36,7 @@ index 7b5eced..32d65e9 100644
  	"strings"
  
 -	readability "codeberg.org/readeck/go-readability/v2"
-+	readability "github.com/jobindex-open/go-readability/v2"
++	readability "github.com/jobindex-open/go-readability"
  	"github.com/go-shiori/dom"
  	"github.com/lmittmann/tint"
  	"github.com/mattn/go-isatty"
@@ -46,7 +46,7 @@ index 875c959..614be7f 100644
 +++ b/go.mod
 @@ -1,4 +1,4 @@
 -module codeberg.org/readeck/go-readability/v2
-+module github.com/jobindex-open/go-readability/v2
++module github.com/jobindex-open/go-readability
  
  go 1.23.0
  
@@ -59,7 +59,7 @@ index ee35c89..63d5df6 100644
  	"strings"
  
 -	"codeberg.org/readeck/go-readability/v2/internal/re2go"
-+	"github.com/jobindex-open/go-readability/v2/internal/re2go"
++	"github.com/jobindex-open/go-readability/internal/re2go"
  	"github.com/go-shiori/dom"
  	"golang.org/x/net/html"
  )
@@ -72,7 +72,7 @@ index 6aa2c75..751c73c 100644
  	"strings"
  
 -	"codeberg.org/readeck/go-readability/v2/internal/re2go"
-+	"github.com/jobindex-open/go-readability/v2/internal/re2go"
++	"github.com/jobindex-open/go-readability/internal/re2go"
  	"github.com/go-shiori/dom"
  	"golang.org/x/net/html"
  )
@@ -85,7 +85,7 @@ index db45690..d80125b 100644
  	"time"
  
 -	readability "codeberg.org/readeck/go-readability/v2"
-+	readability "github.com/jobindex-open/go-readability/v2"
++	readability "github.com/jobindex-open/go-readability"
  	"github.com/go-shiori/dom"
  	"golang.org/x/net/html"
  )
@@ -98,7 +98,7 @@ index 71e657e..c53d548 100644
  	"unicode/utf8"
  
 -	"codeberg.org/readeck/go-readability/v2/internal/re2go"
-+	"github.com/jobindex-open/go-readability/v2/internal/re2go"
++	"github.com/jobindex-open/go-readability/internal/re2go"
  )
  
  // indexOf returns the position of the first occurrence of a

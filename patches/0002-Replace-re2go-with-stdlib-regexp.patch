@@ -5262,7 +5262,7 @@ index 63d5df6..3ee123a 100644
  	"math"
  	"strings"
  
--	"github.com/jobindex-open/go-readability/v2/internal/re2go"
+-	"github.com/jobindex-open/go-readability/internal/re2go"
  	"github.com/go-shiori/dom"
  	"golang.org/x/net/html"
  )
@@ -5285,7 +5285,7 @@ index 751c73c..d8fb249 100644
  	"strconv"
  	"strings"
  
--	"github.com/jobindex-open/go-readability/v2/internal/re2go"
+-	"github.com/jobindex-open/go-readability/internal/re2go"
  	"github.com/go-shiori/dom"
  	"golang.org/x/net/html"
  )
@@ -5697,7 +5697,7 @@ index c53d548..7d89b6a 100644
  	"unicode"
  	"unicode/utf8"
 -
--	"github.com/jobindex-open/go-readability/v2/internal/re2go"
+-	"github.com/jobindex-open/go-readability/internal/re2go"
  )
  
  // indexOf returns the position of the first occurrence of a
