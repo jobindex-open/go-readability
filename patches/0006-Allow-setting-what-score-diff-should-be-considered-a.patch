@@ -1,0 +1,45 @@
+From b4972878db01f4c9d6c3a7f8fdcd5391c5452502 Mon Sep 17 00:00:00 2001
+From: Niels Peter Roest <nero@jobindex.dk>
+Date: Thu, 28 May 2026 10:48:56 +0200
+Subject: [PATCH] Allow setting what score diff should be considered among the
+ top candidates
+
+Among the top candidates, a candidate should have atleast 75% of the score of the top candidate before being considered.
+But modern html is heavily fragmented, so allowing various values like 50% to be used makes sense in some scenarios
+---
+ parser.go | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/parser.go b/parser.go
+index 2b3eef1..4f20d46 100644
+--- a/parser.go
++++ b/parser.go
+@@ -110,6 +110,8 @@ type Parser struct {
+ 	// and class weight). It returns a score adjustment that is added to the
+ 	// initial score (positive to boost, negative to penalize).
+ 	ScoreNode func(node *html.Node, initialScore float64) float64
++	// The maximum score diff from the top node to consider a node a potential candidate
++	MaxScoreDiff float64
+ 
+ 	doc             *html.Node
+ 	documentURI     *nurl.URL
+@@ -131,6 +133,7 @@ func NewParser() Parser {
+ 		ClassesToPreserve: []string{"page"},
+ 		KeepClasses:       false,
+ 		TagsToScore:       []string{"section", "h2", "h3", "h4", "h5", "h6", "p", "td", "pre"},
++		MaxScoreDiff:      0.75,
+ 		// TODO: switch to slog.DiscardHandler with go 1.24
+ 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+ 	}
+@@ -1067,7 +1070,7 @@ func (ps *Parser) grabArticle() *html.Node {
+ 			topCandidateScore := ps.getContentScore(topCandidate)
+ 			var alternativeCandidateAncestors [][]*html.Node
+ 			for i := 1; i < len(topCandidates); i++ {
+-				if ps.getContentScore(topCandidates[i])/topCandidateScore >= 0.75 {
++				if ps.getContentScore(topCandidates[i])/topCandidateScore >= ps.MaxScoreDiff {
+ 					topCandidateAncestors := ps.getNodeAncestors(topCandidates[i], 0)
+ 					alternativeCandidateAncestors = append(alternativeCandidateAncestors, topCandidateAncestors)
+ 				}
+-- 
+2.54.0
+
